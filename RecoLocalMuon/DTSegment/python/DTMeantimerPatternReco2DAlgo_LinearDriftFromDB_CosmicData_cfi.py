@@ -12,7 +12,7 @@ DTMeantimerPatternReco2DAlgo_LinearDriftFromDB_CosmicData = cms.PSet(
     Reco2DAlgoConfig = cms.PSet(
         # Parameters for the updator
         # this is the RecHit1D algo!!
-        DTLinearDriftFromDBAlgo,
+        DTLinearDriftFromDBAlgo_CosmicData,
         AlphaMaxPhi = cms.double(100.0),
         AlphaMaxTheta = cms.double(100.),
         MaxChi2 = cms.double(4.0),

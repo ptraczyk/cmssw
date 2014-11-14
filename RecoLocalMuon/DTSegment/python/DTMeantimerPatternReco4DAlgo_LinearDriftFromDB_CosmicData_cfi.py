@@ -15,7 +15,7 @@ DTMeantimerPatternReco4DAlgo_LinearDriftFromDB_CosmicData = cms.PSet(
     Reco4DAlgoConfig = cms.PSet(
         # Parameters for the updator
         # this is the RecHit1D algo!!
-        DTLinearDriftFromDBAlgo,
+        DTLinearDriftFromDBAlgo_CosmicData,
         # this are the RecSegment2D algo parameters!
         DTMeantimerPatternReco2DAlgo_LinearDriftFromDB_CosmicData,
         debug = cms.untracked.bool(False),
