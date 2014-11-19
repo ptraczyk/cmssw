@@ -46,7 +46,6 @@ using namespace edm;
 /// Constructor
 DTSegmentUpdator::DTSegmentUpdator(const ParameterSet& config) :
   theFitter(new DTLinearFit()) ,
-  intime_cut(config.getUntrackedParameter<double>("intime_cut",20.)),
   vdrift_4parfit(config.getParameter<bool>("performT0_vdriftSegCorrection")),
   T0_hit_resolution(config.getParameter<double>("hit_afterT0_resolution")),
   perform_delta_rejecting(config.getParameter<bool>("perform_delta_rejecting")),
@@ -55,6 +54,9 @@ DTSegmentUpdator::DTSegmentUpdator(const ParameterSet& config) :
   string theAlgoName = config.getParameter<string>("recAlgo");
   theAlgo = DTRecHitAlgoFactory::get()->create(theAlgoName, 
                                                config.getParameter<ParameterSet>("recAlgoConfig"));
+  intime_cut=20.;
+  if (config.exists("intime_cut"))
+    intime_cut = config.getParameter<double>("intime_cut");
 
   if(debug)
     cout << "[DTSegmentUpdator] Constructor called" << endl;
