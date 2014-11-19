@@ -124,15 +124,15 @@ void DTSegmentUpdator::fit(DTRecSegment4D* seg, bool allow3par)  const {
 
       // fit in-time Phi segments with the 2par fit and out-of-time segments with the 3par fit
       if (fabs(seg->phiSegment()->t0())<intime_cut) {
-        fit(seg->phiSegment(),allow3par,0);
-        fit(seg->zSegment(),allow3par,0);      
-      } else {
         fit(seg->phiSegment(),allow3par,1);
         fit(seg->zSegment(),allow3par,1);      
+      } else {
+        fit(seg->phiSegment(),allow3par,0);
+        fit(seg->zSegment(),allow3par,0);      
       }
 
-    } else fit(seg->phiSegment(),allow3par,1);
-  } else fit(seg->zSegment(),allow3par,1);
+    } else fit(seg->phiSegment(),allow3par,0);
+  } else fit(seg->zSegment(),allow3par,0);
  
   const DTChamber* theChamber = theGeom->chamber(seg->chamberId());
 

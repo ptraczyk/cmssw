@@ -18,6 +18,7 @@ DTMeantimerPatternReco4DAlgo_LinearDriftFromDB_CosmicData = cms.PSet(
         DTLinearDriftFromDBAlgo_CosmicData,
         # this are the RecSegment2D algo parameters!
         DTMeantimerPatternReco2DAlgo_LinearDriftFromDB_CosmicData,
+        intime_cut = cms.untracked.double(20.),        
         debug = cms.untracked.bool(False),
 
         # Parameters for the cleaner
