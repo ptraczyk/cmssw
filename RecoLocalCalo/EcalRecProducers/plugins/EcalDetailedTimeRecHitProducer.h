@@ -32,7 +32,7 @@ class  EcalDetailedTimeRecHitProducer : public edm::EDProducer {
         private:
 
 		//Functions to correct the TOF from the EcalDigi which is not corrected for the vertex position
-		double deltaTimeOfFlight( GlobalPoint& vertex, const DetId& detId , int layer) const ;
+		double deltaTimeOfFlight( GlobalPoint& vertex, const DetId& detId , int layer, bool isShashlik = 0) const ;
 
 		const CaloGeometry* m_geometry;
 

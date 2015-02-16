@@ -187,6 +187,7 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
         std::auto_ptr< EKRecHitCollection > EKDetailedTimeRecHits( new EKRecHitCollection );
 
 	GlobalPoint* vertex=0;
+	double vertexTime = 0.;
 
 	if (correctForVertexZPosition_)
 	  {
@@ -222,6 +223,7 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
 			assert ((*VertexHandle)[0].vertexId() == 0);
 			const SimVertex* myVertex= &(*VertexHandle)[0];
 			vertex=new GlobalPoint(myVertex->position().x(),myVertex->position().y(),myVertex->position().z());
+			vertexTime = myVertex->position().t() * 1E9;
 		      }
 		  }
 		else {
@@ -243,7 +245,7 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
 			  //Vertex corrected ToF
 			  if (vertex)
 			    {
-			      aHit.setTime(myTime+deltaTimeOfFlight(*vertex,(*it).id(),ebTimeLayer_));
+			      aHit.setTime(myTime-vertexTime+deltaTimeOfFlight(*vertex,(*it).id(),ebTimeLayer_));
 			    }
 			  else
 			    //Uncorrected ToF
@@ -271,7 +273,7 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
 			  //Vertex corrected ToF
 			  if (vertex)
 			    {
-			      aHit.setTime(myTime+deltaTimeOfFlight(*vertex,(*it).id(),eeTimeLayer_));
+			      aHit.setTime(myTime-vertexTime+deltaTimeOfFlight(*vertex,(*it).id(),eeTimeLayer_));
 			    }
 			  else
 			    //Uncorrected ToF
@@ -298,7 +300,7 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
 			  //Vertex corrected ToF
 			  if (vertex)
 			    {
-			      aHit.setTime(myTime+deltaTimeOfFlight(*vertex,(*it).id(),ekTimeLayer_));
+			      aHit.setTime(myTime-vertexTime+deltaTimeOfFlight(*vertex,(*it).id(),ekTimeLayer_,1));
 //			      std::cout << " uncorr time: " << myTime << "  corrected: " << myTime+deltaTimeOfFlight(*vertex,(*it).id(),ekTimeLayer_)
 //			                << "  old rechit: " << (*it).time() << std::endl;
 			    }
@@ -326,11 +328,21 @@ void EcalDetailedTimeRecHitProducer::produce(edm::Event& evt, const edm::EventSe
 	  delete vertex;
 }
 
-double EcalDetailedTimeRecHitProducer::deltaTimeOfFlight( GlobalPoint& vertex, const DetId& detId , int layer) const 
+double EcalDetailedTimeRecHitProducer::deltaTimeOfFlight( GlobalPoint& vertex, 
+							  const DetId& detId , 
+							  int layer,
+							  bool isShashlik) const 
 {
   const CaloCellGeometry* cellGeometry ( m_geometry->getGeometry( detId ) ) ;
   assert( 0 != cellGeometry ) ;
-  GlobalPoint layerPos = (dynamic_cast<const TruncatedPyramid*>(cellGeometry))->getPosition( double(layer)+0.5 ); //depth in mm in the middle of the layer position
+  GlobalPoint layerPos;
+  if (!isShashlik) 
+    layerPos = (dynamic_cast<const TruncatedPyramid*>(cellGeometry))->getPosition( double(layer)+0.5 ); 
+    //depth in mm in the middle of the layer position for 1cm depth layers
+    else
+    layerPos = (dynamic_cast<const TruncatedPyramid*>(cellGeometry))->getPosition( double(layer)*0.4-0.075-0.25 ); 
+    //depth in mm in the middle of the sensitive layer, for the shashlik 4mm segmentation 
+    
   GlobalVector tofVector = layerPos-vertex;
   return (layerPos.mag()*cm-tofVector.mag()*cm)/(float)c_light ;
 }
