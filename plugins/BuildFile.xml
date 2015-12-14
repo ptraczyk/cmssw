@@ -1,0 +1,31 @@
+<use   name="Geometry/DTGeometry"/>
+<use   name="DataFormats/DetId"/>
+<use   name="DataFormats/MuonDetId"/>
+<use   name="DataFormats/MuonReco"/>
+<use   name="DataFormats/TrackReco"/>
+<use   name="FWCore/Framework"/>
+<use   name="FWCore/MessageLogger"/>
+<use   name="FWCore/ParameterSet"/>
+<use   name="Geometry/CommonDetUnit"/>
+<use   name="Geometry/Records"/>
+<use   name="SimDataFormats/Track"/>
+<use   name="SimDataFormats/TrackingHit"/>
+<use   name="roothistmatrix"/>
+<use   name="RecoMuon/TrackingTools"/>
+<use   name="RecoMuon/MuonIdentification"/>
+<use   name="DataFormats/CSCRecHit"/>
+<library   name="UserCodeHSCPTOF" file="*.cc">
+  <flags   EDM_PLUGIN="1"/>
+  <use   name="DataFormats/DetId"/>
+  <use   name="DataFormats/MuonDetId"/>
+  <use   name="DataFormats/MuonReco"/>
+  <use   name="DataFormats/TrackReco"/>
+  <use   name="FWCore/Framework"/>
+  <use   name="FWCore/MessageLogger"/>
+  <use   name="FWCore/ParameterSet"/>
+  <use   name="Geometry/CommonDetUnit"/>
+  <use   name="Geometry/Records"/>
+  <use   name="SimDataFormats/Track"/>
+  <use   name="SimDataFormats/TrackingHit"/>
+  <use   name="roothistmatrix"/>
+</library>
