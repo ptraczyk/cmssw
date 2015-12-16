@@ -20,7 +20,7 @@ muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
     angleCut = cms.double(0.02),
 
 # Muon-level cuts
-    requireGlb = cms.bool(True),
+    requireId = cms.string(""),
     PtCut = cms.double(5.0),
     etaMin = cms.double(0.0),
     etaMax = cms.double(2.5),

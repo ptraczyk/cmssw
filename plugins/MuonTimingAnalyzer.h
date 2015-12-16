@@ -86,7 +86,7 @@ private:
   string out, open;
   bool theDebug;
   bool doSim;
-  bool theOnlyGlb;
+  string theIdCut;
   bool theCollVeto;
   bool theVetoCosmics;
   bool theOnlyCosmics;
@@ -261,6 +261,7 @@ private:
   TH1F* hi_csctime_fib_err;
   TH1F* hi_csctime_fib_pull;
   TH1F* hi_csctime_vtx;
+  TH2F* hi_csctime_vtxn;
   TH2F* hi_csctime_vtx_pt;
   TH1F* hi_csctime_vtx_t;
   TH1F* hi_csctime_vtx_b;

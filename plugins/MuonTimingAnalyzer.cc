@@ -96,7 +96,7 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
   open(iConfig.getParameter<string>("open")),
   theDebug(iConfig.getParameter<bool>("debug")),
   doSim(iConfig.getParameter<bool>("mctruthMatching")),
-  theOnlyGlb(iConfig.getParameter<bool>("requireGlb")),
+  theIdCut(iConfig.getParameter<string>("requireId")),
   theCollVeto(iConfig.getParameter<bool>("collisionVeto")),
   theVetoCosmics(iConfig.getParameter<bool>("vetoCosmics")),
   theOnlyCosmics(iConfig.getParameter<bool>("onlyCosmics")),
@@ -115,6 +115,8 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
 //  iC=new edm::ConsumesCollector();
   edm::ConsumesCollector collector(consumesCollector());
   theMatcher = new MuonSegmentMatcher(matchParameters, collector);
+
+  cout << " id cut " << theIdCut << endl;
 
   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
   trackToken_ = consumes<reco::TrackCollection>(TKtrackTags_);
@@ -173,7 +175,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::Handle<TrackingParticleCollection>  TruthTrackContainer ;
   iEvent.getByLabel("mix","MergedTrackTruth",TruthTrackContainer );
   if (!TruthTrackContainer.isValid()) {
-    cout << "No trackingparticle data in the Event" << endl;
+    if (debug) cout << "No trackingparticle data in the Event" << endl;
   } else tpart=true;
   
   const TrackingParticleCollection *tPC=0;
@@ -271,18 +273,12 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
     reco::MuonRef muonR(MuCollection,imucount);
     imucount++;    
-    if (imuon->pt()<1) continue;
+    if (imuon->pt()<thePtCut) continue;
     if ((fabs(imuon->eta())<theMinEta) || (fabs(imuon->eta())>theMaxEta)) continue;
+    if (theIdCut=="glb"   && !muon::isGoodMuon(*imuon, muon::GlobalMuonPromptTight )) continue;
+    if (theIdCut=="loose" && !muon::isLooseMuon(*imuon)) continue;
+    if (theIdCut=="tight" && !muon::isTightMuon(*imuon, pvertex )) continue;
 //    if (!imuon->track().isNonnull()) continue;
-
-    bool tight_id = false;
-    if (muon::isGoodMuon(*imuon, muon::GlobalMuonPromptTight ) && theOnlyGlb) tight_id=dumpMuonId(*imuon, pvertex, debug);
-
-    if (theOnlyGlb) {
-      if (!tight_id) continue;
-//      if (!muon::isTightMuon(*imuon, pvertex )) continue;
-//      if (imuon->pt()<10) continue;
-    } 
 
     if (debug) cout << endl << "   Found muon. Pt: " << imuon->pt() << endl;
 
@@ -346,6 +342,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       for (vector<const RPCRecHit*>::const_iterator hitRPC = rpcHits.begin(); hitRPC != rpcHits.end(); hitRPC++) {
         nrpc++;
         trpc+=(*hitRPC)->BunchX()*25.;
+        if (debug) cout << "   RPC hit: " << (*hitRPC)->BunchX()*25. << endl;
       }
       if (nrpc>0) {
         trpc/=(double)nrpc;
@@ -368,7 +365,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       if (leg>0) sptt=(*staTrack).pt();
         else sptb=(*staTrack).pt();
     }  
-    cout << " ddd " << endl;
+//    cout << " ddd " << endl;
 
     if (glbTrack.isNonnull()) {
       hi_glb_pt->Fill(imuon->pt());
@@ -394,7 +391,17 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         dumpTrack(staTrack);
       }
       if (glbTrack.isNonnull()) {
+        reco::TrackRef fmsTrack = imuon->tpfmsTrack();
+        reco::TrackRef pmrTrack = imuon->pickyTrack();
+        reco::TrackRef dytTrack = imuon->dytTrack();
+
         cout << "|     Global Track ";
+        dumpTrack(fmsTrack);      
+        cout << "|     FMS Track ";
+        dumpTrack(pmrTrack);      
+        cout << "|     Picky Track ";
+        dumpTrack(dytTrack);      
+        cout << "|     DYT Track ";
         dumpTrack(glbTrack);      
       }
       cout << endl;
@@ -466,7 +473,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_dttime_vtx_w->Fill(timedt.timeAtIpInOut());
       hi_dttime_vtx_pt->Fill(timedt.timeAtIpInOut(),stapt);
       hi_dttime_vtx_phi->Fill(timedt.timeAtIpInOut(),imuon->phi());
-      if (timedt.timeAtIpInOut()>30.) hi_dttime_etaphi->Fill(imuon->eta(),imuon->phi());
+      if (fabs(timedt.timeAtIpInOut())>30.) hi_dttime_etaphi->Fill(imuon->eta(),imuon->phi());
       hi_dttime_vtx_eta->Fill(timedt.timeAtIpInOut(),imuon->eta());
       if (timedt.timeAtIpInOut()<30.) 
         hi_dttime_eeta_lo->Fill(outeta,imuon->eta());
@@ -525,6 +532,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_csctime_fib->Fill(timecsc.freeInverseBeta());
       hi_csctime_fib_err->Fill(timecsc.freeInverseBetaErr());
       hi_csctime_vtx->Fill(timecsc.timeAtIpInOut());
+      hi_csctime_vtxn->Fill(timecsc.timeAtIpInOut(),timecsc.nDof());
       hi_csctime_vtx_err->Fill(timecsc.timeAtIpInOutErr());
       hi_csctime_vtx_eta->Fill(timecsc.timeAtIpInOut(),imuon->eta());
       hi_csctime_vtx_phi->Fill(timecsc.timeAtIpInOut(),imuon->phi());
@@ -725,13 +733,13 @@ MuonTimingAnalyzer::beginJob()
    hi_dttime_fibp_t = new TH2F("hi_dttime_fibp_t","DT Free Inverse Beta (TOP)",theNBins,-5.,5.,theNBins,0.,3.14);
    hi_dttime_fibp_b = new TH2F("hi_dttime_fibp_b","DT Free Inverse Beta (BOT)",theNBins,-5.,5.,theNBins,0.,3.14);
    hi_dttime_fib_err = new TH1F("hi_dttime_fib_err","DT Free Inverse Beta Error",theNBins,0,5.);
-   hi_dttime_vtx = new TH1F("hi_dttime_vtx","DT Time at Vertex",theNBins,-100,140);
-   hi_dttime_vtxn = new TH2F("hi_dttime_vtxn","DT Time at Vertex",theNBins,-100,140,48,0.,48.0);
+   hi_dttime_vtx = new TH1F("hi_dttime_vtx","DT Time at Vertex",theNBins*2,-60,60);
+   hi_dttime_vtxn = new TH2F("hi_dttime_vtxn","DT Time at Vertex",theNBins,-100,100,48,0.,48.0);
    hi_dttime_vtx_w = new TH1F("hi_dttime_vtx_w","DT Time at Vertex (wide)",theNBins*3,-75.*theScale,75.*theScale);
    hi_dttime_vtx_pt = new TH2F("hi_dttime_vtx_pt","Time at Vertex vs STA p_{T}",theNBins,-100,100,theNBins,theMinPtres,theMaxPtres);
    hi_dttime_vtx_phi = new TH2F("hi_dttime_vtx_phi","DT Time at Vertex vs Phi",theNBins,-100,100,60,-3.14,3.14);
    hi_dttime_vtx_eta = new TH2F("hi_dttime_vtx_eta","DT Time at Vertex vs Eta",theNBins,-100,100,60,-2.1,2.1);
-   hi_dttime_etaphi = new TH2F("hi_dttime_vtx_eta","DT Time at Vertex vs Eta",60,-2.1,2.1,60,-3.14,3.14);
+   hi_dttime_etaphi = new TH2F("hi_dttime_etaphi","Eta vs Phi of muons with |DT t_{0}|>30ns",60,-2.1,2.1,60,-3.14,3.14);
    hi_dttime_eeta_lo = new TH2F("hi_dttime_eeta_lo","Pt Eta vs Origin Eta for DT in-time",60,-2.1,2.1,60,-2.1,2.1);
    hi_dttime_eeta_hi = new TH2F("hi_dttime_eeta_hi","Pt Eta vs Origin Eta for DT ou-time",60,-2.1,2.1,60,-2.1,2.1);
    hi_dttime_vtx_etat = new TH2F("hi_dttime_vtx_etat","DT Time at Vertex vs Eta (TOP)",theNBins,-100,100,60,-2.1,2.1);
@@ -765,7 +773,8 @@ MuonTimingAnalyzer::beginJob()
    hi_csctime_fib_t = new TH1F("hi_csctime_fib_t","CSC Free Inverse Beta (TOP)",theNBins,-5.,5.);
    hi_csctime_fib_b = new TH1F("hi_csctime_fib_b","CSC Free Inverse Beta (BOT)",theNBins,-5.,5.);
    hi_csctime_fib_err = new TH1F("hi_csctime_fib_err","CSC Free Inverse Beta Error",theNBins,0,5.);
-   hi_csctime_vtx = new TH1F("hi_csctime_vtx","CSC Time at Vertex (inout)",theNBins,-25.*theScale,25.*theScale);
+   hi_csctime_vtx = new TH1F("hi_csctime_vtx","CSC Time at Vertex (inout)",theNBins,-100,100);
+   hi_csctime_vtxn = new TH2F("hi_csctime_vtxn","CSC Time at Vertex vs nDof",theNBins,-100,100,48,0.,48.0);
    hi_csctime_vtx_pt = new TH2F("hi_csctime_vtx_pt","Time at Vertex vs STA p_{T}",theNBins,-25.*theScale,25.*theScale,theNBins,theMinPtres,theMaxPtres);
    hi_csctime_vtx_t = new TH1F("hi_csctime_vtx_t","CSC Time at Vertex (TOP inout)",theNBins,-25.*theScale,25.*theScale);
    hi_csctime_vtx_b = new TH1F("hi_csctime_vtx_b","CSC Time at Vertex (BOT inout)",theNBins,-25.*theScale,25.*theScale);
@@ -783,7 +792,6 @@ MuonTimingAnalyzer::beginJob()
    hi_csctime_vtx_pull = new TH1F("hi_csctime_vtx_pull","CSC Time at Vertex Pull (inout)",theNBins,-5.,5.0);
    hi_csctime_vtxr_pull = new TH1F("hi_csctime_vtxR_pull","CSC Time at Vertex Pull (inout)",theNBins,-5.,5.0);
    hi_csctime_ndof = new TH1F("hi_csctime_ndof","Number of CSC timing measurements",48,0.,48.0);
-
 
 }
 
@@ -814,24 +822,24 @@ MuonTimingAnalyzer::endJob() {
   hi_sta_ptt->Write();
   hi_sta_phi->Write();
   hi_sta_eta->Write();
-  hi_sta_nhits->Write();
+//  hi_sta_nhits->Write();
   hi_sta_nvhits->Write();
   hi_sta_chi2->Write();
 
   hi_tk_pt->Write();
   hi_tk_phi->Write();
   hi_tk_eta->Write();
-  hi_tk_nhits->Write();
+//  hi_tk_nhits->Write();
   hi_tk_nvhits->Write();
   hi_tk_chi2->Write();
 
   hi_glb_pt->Write();
   hi_glb_pt_cut->Write();
-  hi_glb_ptres->Write();
-  hi_glb_ptt->Write();
+//  hi_glb_ptres->Write();
+//  hi_glb_ptt->Write();
   hi_glb_phi->Write();
   hi_glb_eta->Write();
-  hi_glb_nhits->Write();
+//  hi_glb_nhits->Write();
   hi_glb_nvhits->Write();
 //  hi_glb_ptresh->Write();
 //  hi_glb_ptres_t->Write();
@@ -883,10 +891,10 @@ MuonTimingAnalyzer::endJob() {
   hi_dttime_ibt_pt->Write();
   hi_dttime_ibt_err->Write();
   hi_dttime_fib->Write();
-  hi_dttime_fib_t->Write();
-  hi_dttime_fib_b->Write();
-  hi_dttime_fibp_t->Write();
-  hi_dttime_fibp_b->Write();
+//  hi_dttime_fib_t->Write();
+//  hi_dttime_fib_b->Write();
+//  hi_dttime_fibp_t->Write();
+//  hi_dttime_fibp_b->Write();
   hi_dttime_fib_err->Write();
   hi_dttime_vtx->Write();
   hi_dttime_vtxn->Write();
@@ -895,20 +903,20 @@ MuonTimingAnalyzer::endJob() {
   hi_dttime_vtx_phi->Write();
   hi_dttime_vtx_eta->Write();
   hi_dttime_etaphi->Write();
-  hi_dttime_eeta_lo->Write();
-  hi_dttime_eeta_hi->Write();
-  hi_dttime_vtx_etat->Write();
-  hi_dttime_vtx_etab->Write();
-  hi_dttime_vtx_t->Write();
-  hi_dttime_vtx_b->Write();
-  hi_dttime_vtx_to->Write();
-  hi_dttime_vtx_bo->Write();
+//  hi_dttime_eeta_lo->Write();
+//  hi_dttime_eeta_hi->Write();
+//  hi_dttime_vtx_etat->Write();
+//  hi_dttime_vtx_etab->Write();
+//  hi_dttime_vtx_t->Write();
+//  hi_dttime_vtx_b->Write();
+//  hi_dttime_vtx_to->Write();
+//  hi_dttime_vtx_bo->Write();
   hi_dttime_vtx_tb->Write();
   hi_dttime_vtx_tb2->Write();
-  hi_dttime_vtxp_t->Write();
-  hi_dttime_vtxp_b->Write();
-  hi_dttime_vtxp_tb->Write();
-  hi_dttime_vtxpt_tb->Write();
+//  hi_dttime_vtxp_t->Write();
+//  hi_dttime_vtxp_b->Write();
+//  hi_dttime_vtxp_tb->Write();
+//  hi_dttime_vtxpt_tb->Write();
   hi_dttime_vtx_err->Write();
   hi_dttime_vtxr->Write();
   hi_dttime_vtxr_err->Write();
@@ -929,17 +937,18 @@ MuonTimingAnalyzer::endJob() {
   hi_csctime_ibt_pt->Write();
   hi_csctime_ibt_err->Write();
   hi_csctime_fib->Write();
-  hi_csctime_fib_t->Write();
-  hi_csctime_fib_b->Write();
+//  hi_csctime_fib_t->Write();
+//  hi_csctime_fib_b->Write();
   hi_csctime_fib_err->Write();
   hi_csctime_vtx->Write();
+  hi_csctime_vtxn->Write();
   hi_csctime_vtx_pt->Write();
-  hi_csctime_vtx_t->Write();
-  hi_csctime_vtx_b->Write();
+//  hi_csctime_vtx_t->Write();
+//  hi_csctime_vtx_b->Write();
   hi_csctime_vtx_eta->Write();
   hi_csctime_vtx_phi->Write();
-  hi_csctime_eeta_lo->Write();
-  hi_csctime_eeta_hi->Write();
+//  hi_csctime_eeta_lo->Write();
+//  hi_csctime_eeta_hi->Write();
   hi_csctime_vtx_etat->Write();
   hi_csctime_vtx_etab->Write();
   hi_csctime_vtx_err->Write();
