@@ -116,7 +116,7 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
   edm::ConsumesCollector collector(consumesCollector());
   theMatcher = new MuonSegmentMatcher(matchParameters, collector);
 
-  cout << " id cut " << theIdCut << endl;
+//  cout << " id cut " << theIdCut << endl;
 
   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
   trackToken_ = consumes<reco::TrackCollection>(TKtrackTags_);
@@ -126,6 +126,7 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
   timeMapDTToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"dt"));
   timeMapCSCToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"csc"));
   genParticleToken_ = consumes<GenParticleCollection>(edm::InputTag("genParticles"));
+  trackingParticleToken_ = consumes<TrackingParticleCollection>(edm::InputTag("mix","MergedTrackTruth"));
 
 }
 
@@ -173,7 +174,8 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }
 
   edm::Handle<TrackingParticleCollection>  TruthTrackContainer ;
-  iEvent.getByLabel("mix","MergedTrackTruth",TruthTrackContainer );
+  iEvent.getByToken(trackingParticleToken_, TruthTrackContainer );
+//  iEvent.getByLabel("mix","MergedTrackTruth",TruthTrackContainer );
   if (!TruthTrackContainer.isValid()) {
     if (debug) cout << "No trackingparticle data in the Event" << endl;
   } else tpart=true;
@@ -271,14 +273,24 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     double genpt=0,stapt=0;
     bool matched=false;
 
+    reco::TrackRef glbTrack = imuon->combinedMuon();
+    reco::TrackRef trkTrack = imuon->track();
+    reco::TrackRef staTrack = imuon->standAloneMuon();
+
+
     reco::MuonRef muonR(MuCollection,imucount);
     imucount++;    
+    
+    MuonTimeExtra timec = timeMapCmb[muonR];
+    MuonTimeExtra timedt = timeMapDT[muonR];
+    MuonTimeExtra timecsc = timeMapCSC[muonR];
+        
     if (imuon->pt()<thePtCut) continue;
     if ((fabs(imuon->eta())<theMinEta) || (fabs(imuon->eta())>theMaxEta)) continue;
+    if ((imuon->eta()>0.9 && imuon->eta()<1.1) && (imuon->phi()>2.3 && imuon->phi()<2.9)) continue;
     if (theIdCut=="glb"   && !muon::isGoodMuon(*imuon, muon::GlobalMuonPromptTight )) continue;
     if (theIdCut=="loose" && !muon::isLooseMuon(*imuon)) continue;
     if (theIdCut=="tight" && !muon::isTightMuon(*imuon, pvertex )) continue;
-//    if (!imuon->track().isNonnull()) continue;
 
     if (debug) cout << endl << "   Found muon. Pt: " << imuon->pt() << endl;
 
@@ -289,10 +301,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_id_dxy->Fill(fabs(imuon->muonBestTrack()->dxy(pvertex.position())));
       hi_id_dz->Fill(fabs(imuon->muonBestTrack()->dz(pvertex.position())));
     }
-
-    reco::TrackRef glbTrack = imuon->combinedMuon();
-    reco::TrackRef trkTrack = imuon->track();
-    reco::TrackRef staTrack = imuon->standAloneMuon();
 
     double d0=0.;
     if (glbTrack.isNonnull()) d0 = -1.*glbTrack->dxy(beamspot);    
@@ -330,34 +338,17 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_tk_phi->Fill(((*trkTrack).phi()));
       hi_tk_eta->Fill(((*trkTrack).eta()));
       hi_tk_chi2->Fill(((*trkTrack).normalizedChi2()));
-//      hi_tk_nhits->Fill((*trkTrack).recHitsSize());
       hi_tk_nvhits->Fill((*trkTrack).found());
       stapt=(*trkTrack).pt();
     }  
 
-    int nrpc=0;
-    double trpc=0;
     if (staTrack.isNonnull()) {
-      vector<const RPCRecHit*> rpcHits = theMatcher->matchRPC(*staTrack,iEvent);
-      for (vector<const RPCRecHit*>::const_iterator hitRPC = rpcHits.begin(); hitRPC != rpcHits.end(); hitRPC++) {
-        nrpc++;
-        trpc+=(*hitRPC)->BunchX()*25.;
-        if (debug) cout << "   RPC hit: " << (*hitRPC)->BunchX()*25. << endl;
-      }
-      if (nrpc>0) {
-        trpc/=(double)nrpc;
-        hi_nrpc->Fill(nrpc);
-        hi_trpc->Fill(trpc);
-        hi_trpc_phi->Fill(trpc,imuon->phi());
-        hi_trpc_eta->Fill(trpc,imuon->eta());
-      }
       stapt=(*staTrack).pt();
       hi_sta_pt->Fill((*staTrack).pt());
       hi_sta_ptres->Fill((*staTrack).pt()-genpt);
       hi_sta_phi->Fill((*staTrack).phi());
       hi_sta_eta->Fill((*staTrack).eta());
       hi_sta_chi2->Fill((*staTrack).normalizedChi2());
-//      hi_sta_nhits->Fill((*staTrack).recHitsSize());
       hi_sta_nvhits->Fill((*staTrack).found());
       math::XYZPoint outerhit = imuon->standAloneMuon()->outerPosition();
       outeta = outerhit.eta();
@@ -365,7 +356,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       if (leg>0) sptt=(*staTrack).pt();
         else sptb=(*staTrack).pt();
     }  
-//    cout << " ddd " << endl;
 
     if (glbTrack.isNonnull()) {
       hi_glb_pt->Fill(imuon->pt());
@@ -374,7 +364,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_glb_d0->Fill(d0);
       hi_glb_phi->Fill(imuon->phi());
       hi_glb_chi2->Fill(((*glbTrack).normalizedChi2()));
-//      hi_glb_nhits->Fill((*glbTrack).recHitsSize());
       hi_glb_nvhits->Fill((*glbTrack).found());
     }
 
@@ -419,15 +408,31 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       }
     }
     
-    // Analyze the MuonTimeExtra information
-    MuonTimeExtra timec = timeMapCmb[muonR];
-    MuonTimeExtra timedt = timeMapDT[muonR];
-    MuonTimeExtra timecsc = timeMapCSC[muonR];
+    reco::MuonTime rpcTime = imuon->rpcTime();
+    if (rpcTime.nDof>0) {
+      hi_nrpc->Fill(rpcTime.nDof);
+      hi_trpc->Fill(rpcTime.timeAtIpInOut);
+      hi_trpcerr->Fill(rpcTime.timeAtIpInOutErr);
+      if (rpcTime.nDof>1 && rpcTime.timeAtIpInOutErr<1) hi_trpc3->Fill(rpcTime.timeAtIpInOut);
+      hi_nrpc_trpc->Fill(rpcTime.nDof,rpcTime.timeAtIpInOut);
+      hi_trpc_phi->Fill(rpcTime.timeAtIpInOut,imuon->phi());
+      hi_trpc_eta->Fill(rpcTime.timeAtIpInOut,imuon->eta());
+      if (debug) cout << "   RPC time: " << rpcTime.timeAtIpInOut << " +/- " << rpcTime.timeAtIpInOutErr << endl;
+    }
 
     if (timec.nDof()) hi_cmbtime_ndof->Fill(timec.nDof());
     if (timedt.nDof()) hi_dttime_ndof->Fill(timedt.nDof());
     if (timecsc.nDof()) hi_csctime_ndof->Fill(timecsc.nDof());
     bool timeok = false;
+
+    bool idcut = true;
+    if (timedt.nDof()>6 && fabs(timedt.timeAtIpInOut())>30) idcut=false;
+    if (timecsc.nDof() && fabs(timecsc.timeAtIpInOut())>15) idcut=false;
+    if (rpcTime.nDof && fabs(rpcTime.timeAtIpInOut)>20) idcut=false;     
+
+//    debug=!idcut;
+
+    if (debug) cout << endl << " Event: " << iEvent.id() << "  Orbit: " << iEvent.orbitNumber() << "  BX: " << iEvent.bunchCrossing() << endl;
 
     if (debug) {
       cout << "          DT nDof: " << timedt.nDof() << endl;
@@ -435,23 +440,22 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       cout << "        Comb nDof: " << timec.nDof() << endl;
     }        
     
-    bool idcut = true;
-    if (timedt.nDof()>6 && fabs(timedt.timeAtIpInOut())>30) idcut=false;
-    if (timecsc.nDof() && fabs(timecsc.timeAtIpInOut())>15) idcut=false;
-    if (nrpc && fabs(trpc)>20) idcut=false;     
-
     if (staTrack.isNonnull()) for (int ii=0;ii<50;ii++) {
-      if (nrpc && fabs(trpc)>ii) hi_id_rpccut_sta->Fill(ii);
+      if (rpcTime.nDof && fabs(rpcTime.timeAtIpInOut)>ii) hi_id_rpccut_sta->Fill(ii);
       if (timecsc.nDof() && fabs(timecsc.timeAtIpInOut())>ii) hi_id_csccut_sta->Fill(ii);
       for (int jj=0;jj<15;jj++)
         if (timedt.nDof()>jj && fabs(timedt.timeAtIpInOut())>ii) hi_id_dtcut_sta->Fill(ii,jj);
+      for (int jj=0;jj<15;jj++)
+        if (timec.nDof()>jj && fabs(timec.timeAtIpInOut())>ii) hi_id_cmbcut_sta->Fill(ii,jj);
     }
 
     if (glbTrack.isNonnull()) for (int ii=0;ii<50;ii++) {
-      if (nrpc && fabs(trpc)>ii) hi_id_rpccut_glb->Fill(ii);
+      if (rpcTime.nDof && fabs(rpcTime.timeAtIpInOut)>ii) hi_id_rpccut_glb->Fill(ii);
       if (timecsc.nDof() && fabs(timecsc.timeAtIpInOut())>ii) hi_id_csccut_glb->Fill(ii);
       for (int jj=0;jj<15;jj++)
         if (timedt.nDof()>jj && fabs(timedt.timeAtIpInOut())>ii) hi_id_dtcut_glb->Fill(ii,jj);
+      for (int jj=0;jj<15;jj++)
+        if (timec.nDof()>jj && fabs(timec.timeAtIpInOut())>ii) hi_id_cmbcut_glb->Fill(ii,jj);
     }
 
     if (idcut) {
@@ -520,6 +524,9 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       if (timecsc.nDof()>theCscCut)
         hi_dtcsc_vtx->Fill(timedt.timeAtIpInOut()-timecsc.timeAtIpInOut());
 
+      if (rpcTime.nDof>1) hi_dtrpc_vtx->Fill(timedt.timeAtIpInOut(),rpcTime.timeAtIpInOut);
+      if (rpcTime.nDof>1 && rpcTime.timeAtIpInOutErr<1) hi_dtrpc3_vtx->Fill(timedt.timeAtIpInOut(),rpcTime.timeAtIpInOut);
+
     }
 
     if (timecsc.nDof()>theCscCut) {
@@ -563,9 +570,12 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         hi_csctime_vtx_pull->Fill(timecsc.timeAtIpInOut()/timecsc.timeAtIpInOutErr());
       if (timecsc.timeAtIpOutInErr()>0.)
         hi_csctime_vtxr_pull->Fill(timecsc.timeAtIpOutIn()/timecsc.timeAtIpOutInErr());
+        
+      if (rpcTime.nDof>1) hi_cscrpc_vtx->Fill(timecsc.timeAtIpInOut(),rpcTime.timeAtIpInOut);
+      if (rpcTime.nDof>1 && rpcTime.timeAtIpInOutErr<1) hi_cscrpc3_vtx->Fill(timecsc.timeAtIpInOut(),rpcTime.timeAtIpInOut);
     }
     
-    if (timec.nDof()>0) {
+    if (timec.nDof()>6) {
       if (debug) 
         cout << "        Comb Time: " << timec.timeAtIpInOut() << " +/- " << timec.inverseBetaErr() << endl;
       hi_cmbtime_ibt->Fill(timec.inverseBeta());
@@ -574,6 +584,8 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       hi_cmbtime_fib->Fill(timec.freeInverseBeta());
       hi_cmbtime_fib_err->Fill(timec.freeInverseBetaErr());
       hi_cmbtime_vtx->Fill(timec.timeAtIpInOut());
+      hi_cmbtime_vtxn->Fill(timec.timeAtIpInOut(),timec.nDof());
+      hi_cmbtime_vtx_w->Fill(timec.timeAtIpInOut());
       hi_cmbtime_vtx_err->Fill(timec.timeAtIpInOutErr());
       hi_cmbtime_vtxr->Fill(timec.timeAtIpOutIn());
       hi_cmbtime_vtxr_err->Fill(timec.timeAtIpOutInErr());
@@ -586,6 +598,8 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         hi_cmbtime_vtx_pull->Fill(timec.timeAtIpInOut()/timec.timeAtIpInOutErr());
       if (timec.timeAtIpOutInErr()>0.)
         hi_cmbtime_vtxr_pull->Fill(timec.timeAtIpOutIn()/timec.timeAtIpOutInErr());
+      if (rpcTime.nDof>1) hi_cmbrpc_vtx->Fill(timec.timeAtIpInOut(),rpcTime.timeAtIpInOut);
+      if (rpcTime.nDof>1 && rpcTime.timeAtIpInOutErr<1) hi_cmbrpc3_vtx->Fill(timec.timeAtIpInOut(),rpcTime.timeAtIpInOut);
     }
     
     if (timeok) {
@@ -643,6 +657,8 @@ MuonTimingAnalyzer::beginJob()
    hi_id_csccut_glb = new TH1F("hi_id_csccut_glb","GLB muons rejected by CSC cut",50,0,50);
    hi_id_dtcut_sta = new TH2F("hi_id_dtcut_sta","STA muons rejected by DT cut",50,0,50,15,0,15);
    hi_id_dtcut_glb = new TH2F("hi_id_dtcut_glb","GLB muons rejected by DT cut",50,0,50,15,0,15);
+   hi_id_cmbcut_sta = new TH2F("hi_id_cmbcut_sta","STA muons rejected by CMB cut",50,0,50,15,0,15);
+   hi_id_cmbcut_glb = new TH2F("hi_id_cmbcut_glb","GLB muons rejected by CMB cut",50,0,50,15,0,15);
 
    hi_id_trklay = new TH1F("hi_id_trklay","Tracker Layers (>5)",18,0.,18);
    hi_id_trkhit = new TH1F("hi_id_trkhit","Pixel hits (>0)",10,0.,10);
@@ -704,17 +720,29 @@ MuonTimingAnalyzer::beginJob()
    hi_dtcsc_vtx_t = new TH1F("hi_dtcsc_vtx_t","Time at Vertex (TOP DT-CSC)",theNBins,-25.*theScale,25.*theScale);
    hi_dtcsc_vtx_b = new TH1F("hi_dtcsc_vtx_b","Time at Vertex (BOT DT-CSC)",theNBins,-25.*theScale,25.*theScale);
 
-   hi_trpc = new TH1F("hi_trpc","Time at Vertex (RPC)",theNBins/3.,-60.,60.);
+   hi_trpc = new TH1F("hi_trpc","Time at Vertex (RPC)",theNBins,-100.,100.);
+   hi_trpc3= new TH1F("hi_trpc3","Time at Vertex (RPC, RPC nHits>1 RPCerr=0) ",theNBins,-100.,100.);
    hi_nrpc = new TH1F("hi_nrpc","RPC nHits",8,0,8);
-   hi_trpc_phi = new TH2F("hi_trpc_phi","RPC Time vs Phi",theNBins/3.,-60,60,60,-3.14,3.14);
-   hi_trpc_eta = new TH2F("hi_trpc_eta","RPC Time vs Eta",theNBins/3.,-60,60,60,-2.1,2.1);
+   hi_trpcerr = new TH1F("hi_trpcerr","Time at Vertex Error (RPC)",theNBins,0.,25.);
+   hi_nrpc_trpc = new TH2F("hi_nrpc_trpc","RPC nHits vs time",8,0,8,theNBins,-100.,100.);
+   hi_trpc_phi = new TH2F("hi_trpc_phi","RPC Time vs Phi",theNBins,-100.,100.,60,-3.14,3.14);
+   hi_trpc_eta = new TH2F("hi_trpc_eta","RPC Time vs Eta",theNBins,-100.,100.,60,-2.1,2.1);
+
+   hi_dtrpc_vtx  = new TH2F("hi_dtrpc_vtx", "Time at Vertex (DT vs RPC) RPC nHits>1", theNBins*2,-100.,100.,theNBins,-100.,100.);
+   hi_cscrpc_vtx = new TH2F("hi_cscrpc_vtx","Time at Vertex (CSC vs RPC) RPC nHits>1",theNBins*2,-100.,100.,theNBins,-100.,100.);
+   hi_cmbrpc_vtx = new TH2F("hi_cmbrpc_vtx","Time at Vertex vs RPC, RPC nHits>1",theNBins*2,-100.,100.,theNBins,-100.,100.);
+   hi_dtrpc3_vtx  = new TH2F("hi_dtrpc3_vtx", "Time at Vertex (DT vs RPC) RPC nHits>1 RPCerr=0", theNBins*2,-100.,100.,theNBins,-100.,100.);
+   hi_cscrpc3_vtx = new TH2F("hi_cscrpc3_vtx","Time at Vertex (CSC vs RPC) RPC nHits>1 RPCerr=0",theNBins*2,-100.,100.,theNBins,-100.,100.);
+   hi_cmbrpc3_vtx = new TH2F("hi_cmbrpc3_vtx","Time at Vertex vs RPC, RPC nHits>1 RPCerr=0",theNBins*2,-100.,100.,theNBins,-100.,100.);
 
    hi_cmbtime_ibt = new TH1F("hi_cmbtime_ibt","Inverse Beta",theNBins,0.,1.6);
    hi_cmbtime_ibt_pt = new TH2F("hi_cmbtime_ibt_pt","P{T} vs Inverse Beta",theNBins,theMinPtres,theMaxPtres,theNBins,0.7,2.0);
    hi_cmbtime_ibt_err = new TH1F("hi_cmbtime_ibt_err","Inverse Beta Error",theNBins,0.,1.0);
    hi_cmbtime_fib = new TH1F("hi_cmbtime_fib","Free Inverse Beta",theNBins,-5.,5.);
    hi_cmbtime_fib_err = new TH1F("hi_cmbtime_fib_err","Free Inverse Beta Error",theNBins,0,5.);
-   hi_cmbtime_vtx = new TH1F("hi_cmbtime_vtx","Time at Vertex (inout)",theNBins,-25.*theScale,25.*theScale);
+   hi_cmbtime_vtx = new TH1F("hi_cmbtime_vtx","Time at Vertex (inout)",theNBins,-100.,100.);
+   hi_cmbtime_vtxn = new TH2F("hi_cmbtime_vtxn","Time at Vertex",theNBins,-100,100,48,0.,48.0);
+   hi_cmbtime_vtx_w = new TH1F("hi_cmbtime_vtx_w","Time at Vertex (inout)",theNBins*3,-75.*theScale,75.*theScale);
    hi_cmbtime_vtx_err = new TH1F("hi_cmbtime_vtx_err","Time at Vertex Error (inout)",theNBins,0.,25.0);
    hi_cmbtime_vtxr = new TH1F("hi_cmbtime_vtxR","Time at Vertex (inout)",theNBins,0.,75.*theScale);
    hi_cmbtime_vtxr_err = new TH1F("hi_cmbtime_vtxR_err","Time at Vertex Error (inout)",theNBins,0.,25.0);
@@ -733,7 +761,7 @@ MuonTimingAnalyzer::beginJob()
    hi_dttime_fibp_t = new TH2F("hi_dttime_fibp_t","DT Free Inverse Beta (TOP)",theNBins,-5.,5.,theNBins,0.,3.14);
    hi_dttime_fibp_b = new TH2F("hi_dttime_fibp_b","DT Free Inverse Beta (BOT)",theNBins,-5.,5.,theNBins,0.,3.14);
    hi_dttime_fib_err = new TH1F("hi_dttime_fib_err","DT Free Inverse Beta Error",theNBins,0,5.);
-   hi_dttime_vtx = new TH1F("hi_dttime_vtx","DT Time at Vertex",theNBins*2,-60,60);
+   hi_dttime_vtx = new TH1F("hi_dttime_vtx","DT Time at Vertex",theNBins*2,-100,100);
    hi_dttime_vtxn = new TH2F("hi_dttime_vtxn","DT Time at Vertex",theNBins,-100,100,48,0.,48.0);
    hi_dttime_vtx_w = new TH1F("hi_dttime_vtx_w","DT Time at Vertex (wide)",theNBins*3,-75.*theScale,75.*theScale);
    hi_dttime_vtx_pt = new TH2F("hi_dttime_vtx_pt","Time at Vertex vs STA p_{T}",theNBins,-100,100,theNBins,theMinPtres,theMaxPtres);
@@ -809,6 +837,8 @@ MuonTimingAnalyzer::endJob() {
   hi_id_csccut_glb->Write();
   hi_id_dtcut_sta->Write();
   hi_id_dtcut_glb->Write();
+  hi_id_cmbcut_sta->Write();
+  hi_id_cmbcut_glb->Write();
 
   hi_id_trklay->Write();
   hi_id_trkhit->Write();
@@ -851,7 +881,10 @@ MuonTimingAnalyzer::endJob() {
   hi_glb_chi2->Write();
 
   hi_trpc->Write();
+  hi_trpc3->Write();
+  hi_trpcerr->Write();
   hi_nrpc->Write();
+  hi_nrpc_trpc->Write();
   hi_trpc_eta->Write();
   hi_trpc_phi->Write();
   hi_mutime_vtx->Write();
@@ -863,6 +896,12 @@ MuonTimingAnalyzer::endJob() {
   hi_dtcsc_vtx->Write();
   hi_dtcsc_vtx_t->Write();
   hi_dtcsc_vtx_b->Write();
+  hi_dtrpc_vtx->Write();
+  hi_cscrpc_vtx->Write();
+  hi_cmbrpc_vtx->Write();
+  hi_dtrpc3_vtx->Write();
+  hi_cscrpc3_vtx->Write();
+  hi_cmbrpc3_vtx->Write();
 
   hFile->cd();
   hFile->mkdir("combined");
@@ -874,6 +913,8 @@ MuonTimingAnalyzer::endJob() {
   hi_cmbtime_fib->Write();
   hi_cmbtime_fib_err->Write();
   hi_cmbtime_vtx->Write();
+  hi_cmbtime_vtxn->Write();
+  hi_cmbtime_vtx_w->Write();
   hi_cmbtime_vtx_err->Write();
   hi_cmbtime_vtxr->Write();
   hi_cmbtime_vtxr_err->Write();

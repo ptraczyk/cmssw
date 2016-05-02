@@ -33,6 +33,8 @@
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
+
 
 #include <TROOT.h>
 #include <TSystem.h>
@@ -103,6 +105,7 @@ private:
   edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapDTToken_;
   edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCSCToken_;
   edm::EDGetTokenT<GenParticleCollection> genParticleToken_;
+  edm::EDGetTokenT<TrackingParticleCollection> trackingParticleToken_;
 
   Handle<reco::MuonCollection> MuCollection;
   Handle<reco::MuonCollection> MuCollectionT;
@@ -129,6 +132,8 @@ private:
   TH1F* hi_id_csccut_glb;
   TH2F* hi_id_dtcut_sta;
   TH2F* hi_id_dtcut_glb;
+  TH2F* hi_id_cmbcut_sta;
+  TH2F* hi_id_cmbcut_glb;
 
   TH1F* hi_id_trklay;
   TH1F* hi_id_trkhit;
@@ -189,8 +194,18 @@ private:
   TH1F* hi_dtcsc_vtx_t;
   TH1F* hi_dtcsc_vtx_b;
 
+  TH2F* hi_dtrpc_vtx;
+  TH2F* hi_cscrpc_vtx;
+  TH2F* hi_cmbrpc_vtx;
+  TH2F* hi_dtrpc3_vtx;
+  TH2F* hi_cscrpc3_vtx;
+  TH2F* hi_cmbrpc3_vtx;
+
   TH1F* hi_trpc;
+  TH1F* hi_trpc3;
+  TH1F* hi_trpcerr;
   TH1F* hi_nrpc;
+  TH2F* hi_nrpc_trpc;
   TH2F* hi_trpc_eta;
   TH2F* hi_trpc_phi;
 
@@ -202,6 +217,8 @@ private:
   TH1F* hi_cmbtime_fib_err;
   TH1F* hi_cmbtime_fib_pull;
   TH1F* hi_cmbtime_vtx;
+  TH2F* hi_cmbtime_vtxn;
+  TH1F* hi_cmbtime_vtx_w;
   TH1F* hi_cmbtime_vtx_err;
   TH1F* hi_cmbtime_vtx_pull;
   TH1F* hi_cmbtime_vtxr;
