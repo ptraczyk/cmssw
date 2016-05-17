@@ -158,7 +158,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   bool debug=theDebug;
   bool tpart=false;
-//  double hiptCut=50.;
 
   if (debug) {
 //    cout << "*** Begin Muon Timing Analyzer " << endl;
@@ -177,7 +176,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   edm::Handle<TrackingParticleCollection>  TruthTrackContainer ;
   iEvent.getByToken(trackingParticleToken_, TruthTrackContainer );
-//  iEvent.getByLabel("mix","MergedTrackTruth",TruthTrackContainer );
   if (!TruthTrackContainer.isValid()) {
     if (debug) cout << "No trackingparticle data in the Event" << endl;
   } else tpart=true;
@@ -189,26 +187,33 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::Handle<reco::TrackCollection> trackc;
   iEvent.getByToken( trackToken_, trackc);
   const reco::TrackCollection trackC = *(trackc.product());
-//  if (debug) cout << " General tracks size: " << trackC.size() << endl;
 
   // simple "collision event" veto on number of tracker tracks greater than 2
   if (theCollVeto && trackC.size()>2) return;
-
-  iEvent.getByToken(muonToken_,MuCollection);
-  const reco::MuonCollection muonC = *(MuCollection.product());
-  if (debug) cout << " Muon collection size: " << muonC.size() << endl;
-  if (!muonC.size()) return;
 
   // Generated particle collection
   Handle<GenParticleCollection> genParticles;
   if (doSim)   
     iEvent.getByToken(genParticleToken_, genParticles);
 
+  // Fill generated muon information
+  if (tpart)
+    for (TrackingParticleCollection::const_iterator iTrack = tPC->begin(); iTrack != tPC->end(); ++iTrack)
+      if (fabs(iTrack->pdgId())==13 && iTrack->p4().Pt()>2 && 
+         (fabs(iTrack->p4().eta())<2.5) && ((iTrack->eventId().bunchCrossing()==theBX) || !theKeepBX)) {
+        hi_gen_pt->Fill(iTrack->p4().Pt());
+        hi_gen_eta->Fill(iTrack->p4().Eta());
+        hi_gen_phi->Fill(iTrack->p4().Phi());
+      }
+
+  iEvent.getByToken(muonToken_,MuCollection);
+  const reco::MuonCollection muonC = *(MuCollection.product());
+  if (debug) cout << " Muon collection size: " << muonC.size() << endl;
+  if (!muonC.size()) return;
   MuonCollection::const_iterator imuon,iimuon;
 
-  float angle=0;
-
   // check for back-to-back dimuons
+  float angle=0;
   if (muonC.size()>1) {
     for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon) {
       if ((imuon->isGlobalMuon() || imuon->isTrackerMuon()) && (imuon->track().isNonnull())) {
@@ -237,14 +242,13 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
   edm::Handle<reco::VertexCollection> recVtxs;
   iEvent.getByToken(vertexToken_,recVtxs);
   unsigned int theIndexOfThePrimaryVertex = 999.;
-//  cout << " Vtx size: " << recVtxs->size() << endl;
   for (unsigned int ind=0; ind<recVtxs->size(); ++ind) {
     if ( (*recVtxs)[ind].isValid() ) {
-    // && !((*recVtxs)[ind].isFake()) ) {
       theIndexOfThePrimaryVertex = ind;
       break;
     }
   }
+
   if (theIndexOfThePrimaryVertex<100) {
     posVtx = ((*recVtxs)[theIndexOfThePrimaryVertex]).position();
     errVtx = ((*recVtxs)[theIndexOfThePrimaryVertex]).error();
@@ -268,15 +272,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   double timet=0,timeb=0,phit=0,ptt=0,ptb=0,sptt=0,sptb=0;
 
-  // Fill generated muon information
-  if (tpart)
-    for (TrackingParticleCollection::const_iterator iTrack = tPC->begin(); iTrack != tPC->end(); ++iTrack)
-      if (fabs(iTrack->pdgId())==13 && iTrack->p4().Pt()>2 && 
-         (fabs(iTrack->p4().eta())<2.5) && ((iTrack->eventId().bunchCrossing()==theBX) || !theKeepBX)) {
-        hi_gen_pt->Fill(iTrack->p4().Pt());
-        hi_gen_eta->Fill(iTrack->p4().Eta());
-        hi_gen_phi->Fill(iTrack->p4().Phi());
-      }
 
 
   int imucount=0;
@@ -415,7 +410,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       muonTime = imuon->time();
       if (debug) cout << "    Time points: " << muonTime.nDof << "  time: " << muonTime.timeAtIpInOut << endl;
       hi_mutime_ndof->Fill(muonTime.nDof);
-      if (muonTime.nDof) {
+      if (muonTime.nDof>4) {
         hi_mutime_vtx->Fill(muonTime.timeAtIpInOut);
         hi_mutime_vtx_err->Fill(muonTime.timeAtIpInOutErr);
       }
@@ -594,7 +589,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
       }    
     }
     
-    if (timec.nDof()>6) {
+    if (timec.nDof()>4) {
       if (debug) 
         cout << "        Comb Time: " << timec.timeAtIpInOut() << " +/- " << timec.inverseBetaErr() << endl;
       hi_cmbtime_ibt->Fill(timec.inverseBeta());
