@@ -14,6 +14,8 @@ muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
 
 # Event-level cuts
     collisionVeto = cms.bool(False),
+    keepOnlyBX = cms.bool(False),
+    generatedBX = cms.int32(0),
     vetoCosmics = cms.bool(False),
     onlyCosmics = cms.bool(False),
     # cosmic ID back-to-back angle cut 

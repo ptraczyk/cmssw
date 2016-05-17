@@ -90,6 +90,8 @@ private:
   bool doSim;
   string theIdCut;
   bool theCollVeto;
+  bool theKeepBX;
+  int theBX;
   bool theVetoCosmics;
   bool theOnlyCosmics;
   double theAngleCut;
@@ -125,6 +127,10 @@ private:
   //ROOT Pointers
   TFile* hFile;
   TStyle* effStyle;
+
+  TH1F* hi_gen_pt;
+  TH1F* hi_gen_eta;
+  TH1F* hi_gen_phi;
 
   TH1F* hi_id_rpccut_sta;
   TH1F* hi_id_rpccut_glb;
@@ -187,6 +193,7 @@ private:
   TH1F* hi_sta_eta  ;
   TH1F* hi_glb_eta  ;
 
+  TH1F* hi_mutime_ndof;
   TH1F* hi_mutime_vtx;
   TH1F* hi_mutime_vtx_err;
 
@@ -200,6 +207,9 @@ private:
   TH2F* hi_dtrpc3_vtx;
   TH2F* hi_cscrpc3_vtx;
   TH2F* hi_cmbrpc3_vtx;
+  TH2F* hi_dtrpc3_vtxw;
+  TH2F* hi_cscrpc3_vtxw;
+  TH2F* hi_cmbrpc3_vtxw;
 
   TH1F* hi_trpc;
   TH1F* hi_trpc3;
