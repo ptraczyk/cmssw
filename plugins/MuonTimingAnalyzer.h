@@ -228,7 +228,7 @@ private:
   TH1F* hi_cmbtime_fib_pull;
   TH1F* hi_cmbtime_vtx;
   TH2F* hi_cmbtime_vtxn;
-  TH1F* hi_cmbtime_vtx_w;
+  TH1F* hi_cmbtime_vtxw;
   TH1F* hi_cmbtime_vtx_err;
   TH1F* hi_cmbtime_vtx_pull;
   TH1F* hi_cmbtime_vtxr;
@@ -249,7 +249,7 @@ private:
   TH1F* hi_dttime_fib_pull;
   TH1F* hi_dttime_vtx;
   TH2F* hi_dttime_vtxn;
-  TH1F* hi_dttime_vtx_w;
+  TH1F* hi_dttime_vtxw;
   TH2F* hi_dttime_vtx_pt;
   TH2F* hi_dttime_vtx_phi;
   TH2F* hi_dttime_vtx_eta;
@@ -283,28 +283,21 @@ private:
   TH1F* hi_csctime_ibt_err;
   TH1F* hi_csctime_ibt_pull;
   TH1F* hi_csctime_fib;
-  TH1F* hi_csctime_fib_t;
-  TH1F* hi_csctime_fib_b;
   TH1F* hi_csctime_fib_err;
   TH1F* hi_csctime_fib_pull;
   TH1F* hi_csctime_vtx;
-  TH2F* hi_csctime_vtxn;
-  TH2F* hi_csctime_vtx_pt;
-  TH1F* hi_csctime_vtx_t;
-  TH1F* hi_csctime_vtx_b;
-  TH2F* hi_csctime_vtx_eta;
-  TH2F* hi_csctime_vtx_phi;
-  TH2F* hi_csctime_eeta_lo;
-  TH2F* hi_csctime_eeta_hi;
-  TH2F* hi_csctime_vtx_etat;
-  TH2F* hi_csctime_vtx_etab;
   TH1F* hi_csctime_vtx_err;
   TH1F* hi_csctime_vtx_pull;
+  TH2F* hi_csctime_vtx_pt;
+  TH2F* hi_csctime_vtx_eta;
+  TH2F* hi_csctime_vtx_phi;
+  TH2F* hi_csctime_vtxn;
   TH1F* hi_csctime_vtxr;
   TH1F* hi_csctime_vtxr_err;
   TH1F* hi_csctime_vtxr_pull;
   TH1F* hi_csctime_ndof;
-
+  TH2F* hi_csctime_eeta_lo;
+  TH2F* hi_csctime_eeta_hi;
 
 };
 #endif
