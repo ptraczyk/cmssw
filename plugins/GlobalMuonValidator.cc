@@ -413,26 +413,6 @@ GlobalMuonValidator::calculateDistance(const math::XYZVector& vect1, const math:
 }
 
 //
-// return h1/h2 with recalculated errors
-//
-TH1F* GlobalMuonValidator::divideErr(TH1F* h1, TH1F* h2, TH1F* hout) {
-
-  hout->Reset();
-  hout->Divide(h1,h2,1.,1.,"B");
-
-  for (int i = 0; i <= hout->GetNbinsX()+1; i++ ) {
-    Float_t tot   = h2->GetBinContent(i) ;
-    Float_t tot_e = h2->GetBinError(i);
-    Float_t eff = hout->GetBinContent(i) ;
-    Float_t Err = 0.;
-    if (tot > 0) Err = tot_e / tot * sqrt( eff* (1-eff) );
-    if (eff == 1. || isnan(Err) || !isfinite(Err) ) Err=1.e-3;
-    hout->SetBinError(i, Err);
-  }
-  return hout;
-}
-
-//
 // choose final trajectory
 //
 const Track* 

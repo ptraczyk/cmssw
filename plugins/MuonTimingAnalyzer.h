@@ -41,7 +41,6 @@
 
 namespace edm {
   class ParameterSet;
-  //  class Event;
   class EventSetup;
   class InputTag;
 }
@@ -49,10 +48,6 @@ namespace edm {
 class TFile;
 class TH1F;
 class TH2F;
-//class TrackRef;
-//class SimTrackRef;
-//class MuonRef;
-class MuonServiceProxy;
 
 using namespace std;
 using namespace edm;
@@ -70,15 +65,12 @@ private:
   virtual void analyze(const edm::Event&, const edm::EventSetup&);
   virtual void endJob() ;
 
-  virtual float calculateDistance(const math::XYZVector&, const math::XYZVector&);
-  virtual TH1F* divideErr(TH1F*, TH1F*, TH1F*);
   double iMass(reco::TrackRef imuon, reco::TrackRef iimuon);
   bool dumpMuonId(const reco::Muon& muon, const reco::Vertex& vtx, const bool debug);
   void dumpTrack(reco::TrackRef track);
 
   // ----------member data ---------------------------
 
-  MuonSegmentMatcher *theMatcher;
   edm::ConsumesCollector *iC;
   edm::InputTag TKtrackTags_; 
   edm::InputTag MuonTags_; 

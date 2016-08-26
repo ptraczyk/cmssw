@@ -113,9 +113,7 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
   theCscCut(iConfig.getParameter<int>("CSCcut")),
   theNBins(iConfig.getParameter<int>("nbins"))
 {
-  edm::ParameterSet matchParameters = iConfig.getParameter<edm::ParameterSet>("MatchParameters");
   edm::ConsumesCollector collector(consumesCollector());
-  theMatcher = new MuonSegmentMatcher(matchParameters, collector);
   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
   trackToken_ = consumes<reco::TrackCollection>(TKtrackTags_);
   muonToken_ = consumes<reco::MuonCollection>(MuonTags_);
@@ -131,7 +129,6 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
 
 MuonTimingAnalyzer::~MuonTimingAnalyzer()
 {
-  if (theMatcher) delete theMatcher;
   if (hFile!=0) {
     hFile->Close();
     delete hFile;
@@ -444,8 +441,6 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     bool timeok = false;
 
 //    debug=!idcut;
-
-    if (debug) cout << endl << " Event: " << iEvent.id() << "  Orbit: " << iEvent.orbitNumber() << "  BX: " << iEvent.bunchCrossing() << endl;
 
     if (debug) {
       cout << "          DT nDof: " << timedt.nDof() << endl;
@@ -1020,34 +1015,6 @@ MuonTimingAnalyzer::endJob() {
   hFile->Write();
 }
 
-float 
-MuonTimingAnalyzer::calculateDistance(const math::XYZVector& vect1, const math::XYZVector& vect2) {
-  float dEta = vect1.eta() - vect2.eta();
-  float dPhi = fabs(Geom::Phi<float>(vect1.phi()) - Geom::Phi<float>(vect2.phi()));
-  float distance = sqrt(pow(dEta,2) + pow(dPhi,2) );
-
-  return distance;
-}
-
-//
-// return h1/h2 with recalculated errors
-//
-TH1F* MuonTimingAnalyzer::divideErr(TH1F* h1, TH1F* h2, TH1F* hout) {
-
-  hout->Reset();
-  hout->Divide(h1,h2,1.,1.,"B");
-
-  for (int i = 0; i <= hout->GetNbinsX()+1; i++ ) {
-    Float_t tot   = h2->GetBinContent(i) ;
-    Float_t tot_e = h2->GetBinError(i);
-    Float_t eff = hout->GetBinContent(i) ;
-    Float_t Err = 0.;
-    if (tot > 0) Err = tot_e / tot * sqrt( eff* (1-eff) );
-    if (eff == 1. || isnan(Err) || !isfinite(Err) ) Err=1.e-3;
-    hout->SetBinError(i, Err);
-  }
-  return hout;
-}
 
 double MuonTimingAnalyzer::iMass(reco::TrackRef imuon, reco::TrackRef iimuon) {
   double energy1 = sqrt(imuon->p() * imuon->p() + 0.011163691);

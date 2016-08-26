@@ -1,10 +1,7 @@
 import FWCore.ParameterSet.Config as cms
 
-from RecoMuon.TrackingTools.MuonSegmentMatcher_cff import *
-
 muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
 
-    MuonSegmentMatcher,
     mctruthMatching = cms.bool(True),
 
 # Event input tags

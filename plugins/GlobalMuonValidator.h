@@ -63,7 +63,6 @@ private:
   virtual void endJob() ;
 
   virtual float calculateDistance(const math::XYZVector&, const math::XYZVector&);
-  virtual TH1F* divideErr(TH1F*, TH1F*, TH1F*);
   const Track*  chooseTrack(vector<const Track*> t, int muonHitsOption, int p1, int p2) const;
   double trackProbability(const Track& track) const;
   void checkMuonHits(const reco::Track& muon, std::vector<int>& hits) const;

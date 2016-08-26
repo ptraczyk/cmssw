@@ -45,7 +45,6 @@ class TH2F;
 //class TrackRef;
 //class SimTrackRef;
 //class MuonRef;
-class MuonServiceProxy;
 
 using namespace std;
 using namespace edm;
