@@ -264,7 +264,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     muNdof = timemuon.nDof;
     muTime = timemuon.timeAtIpInOut;
-    muTimeErr = timemuon.cdtimeAtIpInOutErr;
+    muTimeErr = timemuon.timeAtIpInOutErr;
 
     rpcNdof = timerpc.nDof;
     rpcTime = timerpc.timeAtIpInOut;
