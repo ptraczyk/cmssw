@@ -23,7 +23,9 @@ class DTWorkflow(CLIHelper, CrabHelper):
         # dict to hold required variables. Can not be marked in argparse to allow
         # loading of options from config
         self.required_options_dict = {}
+        self.required_options_prepare_dict = {}
         self.fill_required_options_dict()
+        self.fill_required_options_prepare_dict()
         # These variables are determined in the derived classes
         self.pset_name = ""
         self.outpath_command_tag = ""
@@ -36,6 +38,20 @@ class DTWorkflow(CLIHelper, CrabHelper):
         # change to working directory
         os.chdir(self.options.working_dir)
 
+    def check_missing_options(self, requirements_dict):
+        missing_options = []
+        # check if all required options exist
+        if self.options.command in requirements_dict:
+            for option in requirements_dict[self.options.command]:
+                if not (hasattr(self.options, option)
+                    and ( (getattr(self.options,option))
+                          or type(getattr(self.options,option)) == bool )):
+                    missing_options.append(option)
+        if len(missing_options) > 0:
+            err = "The following CLI options are missing"
+            err += " for command %s: " % self.options.command
+            err += " ".join(missing_options)
+            raise ValueError(err)
 
     def run(self):
         """ Generalized function to run workflow command"""
@@ -43,25 +59,18 @@ class DTWorkflow(CLIHelper, CrabHelper):
         if hasattr(self.options, "command"):
             msg += " for command %s" % self.options.command
         log.info(msg)
+        if self.options.config_path:
+            self.load_options( self.options.config_path )
+        #check if all options to prepare the command are used
+        self.check_missing_options(self.required_options_prepare_dict)
         self.prepare_workflow()
         # create output folder if they do not exist yet
         if not os.path.exists( self.local_path ):
             os.makedirs(self.local_path)
         # dump used options
         self.dump_options()
-
-        missing_options = []
-        # check if all required options exist
-        if self.options.command in self.required_options_dict:
-            for option in self.required_options_dict[self.options.command]:
-                if not (hasattr(self.options, option)
-                    and ( (getattr(self.options,option))
-                          or type(getattr(self.options,option)) == bool )):
-                    missing_options.append(option)
-        if len(missing_options) > 0:
-            err = "The following CLI options are missing for command %s: " % self.options.command
-            err += " ".join(missing_options)
-            raise ValueError(err)
+        #check if all options to run the command are used
+        self.check_missing_options(self.required_options_dict)
         try:
             run_function = getattr(self, self.options.command)
         except AttributeError:
@@ -199,7 +208,7 @@ class DTWorkflow(CLIHelper, CrabHelper):
         if self.options.preselection:
             self.add_preselection()
 
-    def prepare_common_write(self):
+    def prepare_common_write(self, do_hadd=True):
         """ Common operations used in most prepare_[workflow_mode]_erite functions"""
         self.load_options_command("submit")
         output_path = os.path.join( self.local_path, "unmerged_results" )
@@ -210,7 +219,7 @@ class DTWorkflow(CLIHelper, CrabHelper):
             self.get_output_files(crabtask, output_path)
             log.info("Received files from storage element")
             log.info("Using hadd to merge output files")
-        if not self.options.no_exec:
+        if not self.options.no_exec and do_hadd:
             returncode = tools.haddLocal(output_path, merged_file)
             if returncode != 0:
                 raise RuntimeError("Failed to merge files with hadd")
@@ -380,7 +389,7 @@ class DTWorkflow(CLIHelper, CrabHelper):
 
     def dump_options(self):
         with open(os.path.join(self.local_path, self.get_config_name()),"w") as out_file:
-            json.dump(vars(self.options), out_file)
+            json.dump(vars(self.options), out_file, indent=4)
 
     def load_options(self, config_file_path):
         if not os.path.exists(config_file_path):
