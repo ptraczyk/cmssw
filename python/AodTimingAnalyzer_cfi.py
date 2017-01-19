@@ -1,6 +1,6 @@
 import FWCore.ParameterSet.Config as cms
 
-muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
+aodTimingAnalyzer = cms.EDAnalyzer("AODTimingAnalyzer",
 
     mctruthMatching = cms.bool(True),
 
@@ -8,8 +8,8 @@ muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
     Muons = cms.untracked.InputTag("muons"),
     TKtracks = cms.untracked.InputTag("generalTracks"),
     Timing = cms.untracked.InputTag("muons"),
-    PrimaryVertex = cms.untracked.InputTag("offlinePrimaryVertices"),
-#    PrimaryVertex = cms.untracked.InputTag("offlineSlimmedPrimaryVertices"),
+#    PrimaryVertex = cms.untracked.InputTag("offlinePrimaryVertices"),
+    PrimaryVertex = cms.untracked.InputTag("offlineSlimmedPrimaryVertices"),
 
 # Event-level cuts
     collisionVeto = cms.bool(False),
@@ -34,6 +34,6 @@ muonTimingAnalyzer = cms.EDAnalyzer("MuonTimingAnalyzer",
     PlotScale = cms.double(1.0),
     nbins = cms.int32(100),
     open = cms.string('recreate'),
-    out = cms.string('muonTimingAnalyzer.root'),
+    out = cms.string('aodTimingAnalyzer.root'),
     debug= cms.bool(False)
 )

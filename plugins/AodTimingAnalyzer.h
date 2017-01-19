@@ -1,7 +1,7 @@
-#ifndef RecoMuon_MuonIdentification_MuonTimingAnalyzer_H
-#define RecoMuon_MuonIdentification_MuonTimingAnalyzer_H
+#ifndef RecoMuon_MuonIdentification_AODTimingAnalyzer_H
+#define RecoMuon_MuonIdentification_AODTimingAnalyzer_H
 
-/** \class MuonTimingAnalyzer
+/** \class AODTimingAnalyzer
  *  Analyzer of the timing information in the reco::Muon object
  *
  *  $Date: 2011/04/06 09:56:30 $
@@ -34,6 +34,7 @@
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
+#include "DataFormats/PatCandidates/interface/Muon.h"
 
 #include <TROOT.h>
 #include <TSystem.h>
@@ -52,12 +53,12 @@ using namespace std;
 using namespace edm;
 using namespace reco;
 
-class MuonTimingAnalyzer : public edm::EDAnalyzer {
-//class MuonTimingAnalyzer : public edm::stream::EDProducer<> {
+class AODTimingAnalyzer : public edm::EDAnalyzer {
+//class AODTimingAnalyzer : public edm::stream::EDProducer<> {
 public: 
 
-  explicit MuonTimingAnalyzer(const edm::ParameterSet&);
-  ~MuonTimingAnalyzer();
+  explicit AODTimingAnalyzer(const edm::ParameterSet&);
+  ~AODTimingAnalyzer();
   
 private:
   virtual void beginJob() ;
@@ -65,7 +66,7 @@ private:
   virtual void endJob() ;
 
   double iMass(reco::TrackRef imuon, reco::TrackRef iimuon);
-  bool dumpMuonId(const reco::Muon& muon, const reco::Vertex& vtx, const bool debug);
+  bool dumpMuonId(const pat::Muon& muon, const reco::Vertex& vtx, const bool debug);
   void dumpTrack(reco::TrackRef track);
 
   // ----------member data ---------------------------
@@ -93,16 +94,13 @@ private:
 
   edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
   edm::EDGetTokenT<reco::TrackCollection> trackToken_;
-  edm::EDGetTokenT<reco::MuonCollection> muonToken_;
+  edm::EDGetTokenT<pat::MuonCollection> muonToken_;
   edm::EDGetTokenT<reco::VertexCollection> vertexToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCmbToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapDTToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCSCToken_;
   edm::EDGetTokenT<GenParticleCollection> genParticleToken_;
   edm::EDGetTokenT<TrackingParticleCollection> trackingParticleToken_;
 
-  Handle<reco::MuonCollection> MuCollection;
-  Handle<reco::MuonCollection> MuCollectionT;
+  Handle<pat::MuonCollection> MuCollection;
+  Handle<pat::MuonCollection> MuCollectionT;
   Handle<reco::TrackCollection> TKTrackCollection;
   Handle<reco::TrackCollection> STATrackCollection;
   Handle<reco::TrackCollection> GLBTrackCollection;
@@ -112,10 +110,6 @@ private:
   Handle<reco::TrackCollection> SLOTrackCollection;
   Handle<edm::SimTrackContainer> SIMTrackCollection;
 
-  Handle<reco::MuonTimeExtraMap> timeMap1;
-  Handle<reco::MuonTimeExtraMap> timeMap2;
-  Handle<reco::MuonTimeExtraMap> timeMap3;
-  
   //ROOT Pointers
   TFile* hFile;
   TStyle* effStyle;
@@ -210,86 +204,6 @@ private:
   TH2F* hi_nrpc_trpc;
   TH2F* hi_trpc_eta;
   TH2F* hi_trpc_phi;
-
-  TH1F* hi_cmbtime_ibt;
-  TH2F* hi_cmbtime_ibt_pt;
-  TH1F* hi_cmbtime_ibt_err;
-  TH1F* hi_cmbtime_ibt_pull;
-  TH1F* hi_cmbtime_fib;
-  TH1F* hi_cmbtime_fib_err;
-  TH1F* hi_cmbtime_fib_pull;
-  TH1F* hi_cmbtime_vtx;
-  TH2F* hi_cmbtime_vtxn;
-  TH1F* hi_cmbtime_vtxw;
-  TH1F* hi_cmbtime_vtx_err;
-  TH1F* hi_cmbtime_vtx_pull;
-  TH1F* hi_cmbtime_vtxr;
-  TH1F* hi_cmbtime_vtxr_err;
-  TH1F* hi_cmbtime_vtxr_pull;
-  TH1F* hi_cmbtime_ndof;
-
-  TH1F* hi_dttime_ibt;
-  TH2F* hi_dttime_ibt_pt;
-  TH1F* hi_dttime_ibt_err;
-  TH1F* hi_dttime_ibt_pull;
-  TH1F* hi_dttime_fib;
-  TH1F* hi_dttime_fib_t;
-  TH1F* hi_dttime_fib_b;
-  TH2F* hi_dttime_fibp_t;
-  TH2F* hi_dttime_fibp_b;
-  TH1F* hi_dttime_fib_err;
-  TH1F* hi_dttime_fib_pull;
-  TH1F* hi_dttime_vtx;
-  TH2F* hi_dttime_vtxn;
-  TH1F* hi_dttime_vtxw;
-  TH2F* hi_dttime_vtx_pt;
-  TH2F* hi_dttime_vtx_phi;
-  TH2F* hi_dttime_vtx_eta;
-  TH2F* hi_dttime_etaphi;
-  TH2F* hi_dttime_eeta_lo;
-  TH2F* hi_dttime_eeta_hi;
-  TH2F* hi_dttime_vtx_etat;
-  TH2F* hi_dttime_vtx_etab;
-  TH1F* hi_dttime_vtx_t;
-  TH1F* hi_dttime_vtx_b;
-  TH1F* hi_dttime_vtx_to;
-  TH1F* hi_dttime_vtx_bo;
-  TH1F* hi_dttime_vtx_tb;
-  TH2F* hi_dttime_vtx_tb2;
-  TH2F* hi_dttime_vtxp_t;
-  TH2F* hi_dttime_vtxp_b;
-  TH2F* hi_dttime_vtxp_tb;
-  TH2F* hi_dttime_vtxpt_tb;
-  TH1F* hi_dttime_vtx_err;
-  TH1F* hi_dttime_vtx_pull;
-  TH1F* hi_dttime_vtxr;
-  TH1F* hi_dttime_vtxr_err;
-  TH1F* hi_dttime_vtxr_pull;
-  TH1F* hi_dttime_errdiff;
-  TH1F* hi_dttime_errdiff_t;
-  TH1F* hi_dttime_errdiff_b;
-  TH1F* hi_dttime_ndof;
-
-  TH1F* hi_csctime_ibt;
-  TH2F* hi_csctime_ibt_pt;
-  TH1F* hi_csctime_ibt_err;
-  TH1F* hi_csctime_ibt_pull;
-  TH1F* hi_csctime_fib;
-  TH1F* hi_csctime_fib_err;
-  TH1F* hi_csctime_fib_pull;
-  TH1F* hi_csctime_vtx;
-  TH1F* hi_csctime_vtx_err;
-  TH1F* hi_csctime_vtx_pull;
-  TH2F* hi_csctime_vtx_pt;
-  TH2F* hi_csctime_vtx_eta;
-  TH2F* hi_csctime_vtx_phi;
-  TH2F* hi_csctime_vtxn;
-  TH1F* hi_csctime_vtxr;
-  TH1F* hi_csctime_vtxr_err;
-  TH1F* hi_csctime_vtxr_pull;
-  TH1F* hi_csctime_ndof;
-  TH2F* hi_csctime_eeta_lo;
-  TH2F* hi_csctime_eeta_hi;
 
 };
 #endif
