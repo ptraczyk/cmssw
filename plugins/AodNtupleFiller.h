@@ -1,7 +1,7 @@
-#ifndef RecoMuon_MuonIdentification_MuonNtupleFiller_H
-#define RecoMuon_MuonIdentification_MuonNtupleFiller_H
+#ifndef RecoMuon_MuonIdentification_AodNtupleFiller_H
+#define RecoMuon_MuonIdentification_AodNtupleFiller_H
 
-/** \class MuonNtupleFiller
+/** \class AodNtupleFiller
  *  Dump muon information into a simple ntuple
  *
  *  $Date: 2011/04/06 09:56:30 $
@@ -16,27 +16,24 @@
 
 #include "SimDataFormats/Track/interface/SimTrack.h"
 #include "SimDataFormats/Track/interface/SimTrackContainer.h"
+#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
+#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
+
+#include "DataFormats/VertexReco/interface/Vertex.h"
+#include "DataFormats/VertexReco/interface/VertexFwd.h"
 #include "DataFormats/TrackReco/interface/Track.h"
 #include "DataFormats/TrackReco/interface/TrackFwd.h"
 #include "DataFormats/TrackReco/interface/TrackExtraFwd.h"
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
+#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+
+#include "DataFormats/PatCandidates/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
 #include "RecoMuon/TrackingTools/interface/MuonSegmentMatcher.h"
-#include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
-
-#include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
 #include "DataFormats/DTRecHit/interface/DTRecHitCollection.h"
 #include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
-#include "DataFormats/HepMCCandidate/interface/GenParticle.h"
-#include "DataFormats/MuonReco/interface/Muon.h"
-#include "DataFormats/MuonReco/interface/MuonFwd.h"
-#include "DataFormats/MuonReco/interface/MuonShower.h"
-#include "DataFormats/L1Trigger/interface/Muon.h"
-#include "DataFormats/L1Trigger/interface/L1MuonParticle.h"
-#include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 
 #include <TROOT.h>
 #include <TSystem.h>
@@ -58,20 +55,17 @@ using namespace std;
 using namespace edm;
 using namespace reco;
 
-class MuonNtupleFiller : public edm::EDAnalyzer {
-//class MuonNtupleFiller : public edm::stream::EDProducer<> {
+class AodNtupleFiller : public edm::EDAnalyzer {
+//class AodNtupleFiller : public edm::stream::EDProducer<> {
 public: 
 
-  explicit MuonNtupleFiller(const edm::ParameterSet&);
-  ~MuonNtupleFiller();
+  explicit AodNtupleFiller(const edm::ParameterSet&);
+  ~AodNtupleFiller();
   
 private:
   virtual void beginJob() ;
   virtual void analyze(const edm::Event&, const edm::EventSetup&);
   virtual void endJob() ;
-
-  double iMass(reco::TrackRef imuon, reco::TrackRef iimuon);
-  vector<int> countRPChits(reco::TrackRef muon, const edm::Event& iEvent);
 
   // ----------member data ---------------------------
 
@@ -89,20 +83,13 @@ private:
 
   edm::EDGetTokenT<reco::BeamSpot> beamSpotToken_;
   edm::EDGetTokenT<reco::TrackCollection> trackToken_;
-  edm::EDGetTokenT<reco::MuonCollection> muonToken_;
-  edm::EDGetTokenT<l1t::MuonBxCollection> muCollToken_;
-  edm::EDGetTokenT<edm::ValueMap<reco::MuonShower>> muons_muonShowerInformation_token_;
+  edm::EDGetTokenT<pat::MuonCollection> muonToken_;
   edm::EDGetTokenT<reco::VertexCollection> vertexToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCmbToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapDTToken_;
-  edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCSCToken_;
   edm::EDGetTokenT<GenParticleCollection> genParticleToken_;
   edm::EDGetTokenT<TrackingParticleCollection> trackingParticleToken_;
-  edm::EDGetTokenT<vector<l1extra::L1MuonParticle>> l1extraToken_;
-  edm::EDGetTokenT<RPCRecHitCollection> rpcRecHitToken_;
 
-  Handle<reco::MuonCollection> MuCollection;
-  Handle<reco::MuonCollection> MuCollectionT;
+  Handle<pat::MuonCollection> MuCollection;
+  Handle<pat::MuonCollection> MuCollectionT;
   Handle<reco::TrackCollection> TKTrackCollection;
   Handle<reco::TrackCollection> STATrackCollection;
   Handle<reco::TrackCollection> GLBTrackCollection;
@@ -123,9 +110,9 @@ private:
   // ***** Tree structure *******
 // generator info (if available)
   bool hasSim;
-  int genCharge[10];
-  float genPt[10], genPhi[10], genEta[10];
-  int genBX[10];
+  int genCharge;
+  double genPt, genPhi, genEta;
+  int genBX;
 
 // event info
   unsigned int event_run;
@@ -143,26 +130,25 @@ private:
 
 // muon kinematics and track fit parameters
   int charge;
-  float pt, phi, eta;
-  float dPt;
-  float dz;
-  float dxy;
+  double pt, phi, eta;
+  double dPt;
+  double dz;
+  double dxy;
   
   int nhits[4];
-  int nrpchits[4];
-  float ssize[4];
+  int ssize[4];
   
 // muon timing
   int muNdof;
-  float muTime;
-  float muTimeErr;
+  double muTime;
+  double muTimeErr;
   int dtNdof;
-  float dtTime;
+  double dtTime;
   int cscNdof;
-  float cscTime;
+  double cscTime;
   int rpcNdof;
-  float rpcTime;
-  float rpcTimeErr;
+  double rpcTime;
+  double rpcTimeErr;
 
 };
 #endif

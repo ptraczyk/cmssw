@@ -33,6 +33,7 @@
 #include "DataFormats/HepMCCandidate/interface/GenParticle.h"
 #include "DataFormats/MuonReco/interface/Muon.h"
 #include "DataFormats/MuonReco/interface/MuonFwd.h"
+#include "DataFormats/L1Trigger/interface/Muon.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 
 #include <TROOT.h>
@@ -100,6 +101,7 @@ private:
   edm::EDGetTokenT<reco::MuonTimeExtraMap> timeMapCSCToken_;
   edm::EDGetTokenT<GenParticleCollection> genParticleToken_;
   edm::EDGetTokenT<TrackingParticleCollection> trackingParticleToken_;
+  edm::EDGetTokenT<CSCSegmentCollection> cscSegmentToken_;
 
   Handle<reco::MuonCollection> MuCollection;
   Handle<reco::MuonCollection> MuCollectionT;

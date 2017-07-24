@@ -52,7 +52,7 @@
 #include <DataFormats/MuonDetId/interface/CSCDetId.h>
 #include <DataFormats/CSCRecHit/interface/CSCRecHit2D.h>
 #include <DataFormats/CSCRecHit/interface/CSCRangeMapAccessor.h>
-
+#include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
 #include "DataFormats/RPCRecHit/interface/RPCRecHit.h"
 
 #include "DataFormats/EcalDetId/interface/EcalSubdetector.h"
@@ -124,6 +124,7 @@ MuonTimingAnalyzer::MuonTimingAnalyzer(const edm::ParameterSet& iConfig)
   timeMapCSCToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"csc"));
   genParticleToken_ = consumes<GenParticleCollection>(edm::InputTag("genParticles"));
   trackingParticleToken_ = consumes<TrackingParticleCollection>(edm::InputTag("mix","MergedTrackTruth"));
+  cscSegmentToken_ = consumes<CSCSegmentCollection>(edm::InputTag("cscSegments"));
 
 }
 
@@ -267,7 +268,21 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
 
   double timet=0,timeb=0,phit=0,ptt=0,ptb=0,sptt=0,sptb=0;
 
+  edm::Handle<CSCSegmentCollection> allSegmentsCSC;
+  iEvent.getByToken(cscSegmentToken_, allSegmentsCSC);
+  
+  edm::ESHandle<GlobalTrackingGeometry> theTrackingGeometry;
+  iSetup.get<GlobalTrackingGeometryRecord>().get(theTrackingGeometry); 
 
+/*  
+  for(CSCSegmentCollection::const_iterator hiti = allSegmentsCSC->begin(); hiti != allSegmentsCSC->end(); hiti++) {
+    if ( !hiti->isValid()) continue; 
+    const GeomDet* cscDet = theTrackingGeometry->idToDet(hiti->geographicalId());
+    cout << " CSC segment at eta = " << cscDet->toGlobal(hiti->localPosition()).eta() 
+	 << " phi = " << cscDet->toGlobal(hiti->localPosition()).phi() 
+	 << "     time = " << hiti->time() << endl;
+  }
+*/
 
   int imucount=0;
   for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon){

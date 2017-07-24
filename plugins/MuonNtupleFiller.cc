@@ -74,6 +74,8 @@
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingParticle.h"
 #include "SimDataFormats/TrackingAnalysis/interface/TrackingVertexContainer.h"
 
+#include "DataFormats/L1Trigger/interface/L1MuonParticle.h"
+
 #include <TROOT.h>
 #include <TSystem.h>
 #include <TFile.h>
@@ -103,12 +105,16 @@ MuonNtupleFiller::MuonNtupleFiller(const edm::ParameterSet& iConfig)
   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
   trackToken_ = consumes<reco::TrackCollection>(TKtrackTags_);
   muonToken_ = consumes<reco::MuonCollection>(MuonTags_);
+  muons_muonShowerInformation_token_  = consumes<edm::ValueMap<reco::MuonShower>>(edm::InputTag("muons", "muonShowerInformation", "RECO"));
+  muCollToken_ = consumes<l1t::MuonBxCollection>(edm::InputTag("gmtStage2Digis","Muon"));
   vertexToken_ = consumes<reco::VertexCollection>(edm::InputTag("offlinePrimaryVertices"));
   timeMapCmbToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"combined"));
   timeMapDTToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"dt"));
   timeMapCSCToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"csc"));
   genParticleToken_ = consumes<GenParticleCollection>(edm::InputTag("genParticles"));
   trackingParticleToken_ = consumes<TrackingParticleCollection>(edm::InputTag("mix","MergedTrackTruth"));
+  rpcRecHitToken_ = consumes<RPCRecHitCollection>(edm::InputTag("rpcRecHits")) ;
+  l1extraToken_ = consumes<vector<l1extra::L1MuonParticle>>(edm::InputTag("l1extraParticles"));
 }
 
 
@@ -202,6 +208,9 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   if (!muonC.size()) return;
   MuonCollection::const_iterator imuon,iimuon;
 
+  edm::Handle<edm::ValueMap<reco::MuonShower> > muonShowerInformationValueMapH_;
+  iEvent.getByToken(muons_muonShowerInformation_token_, muonShowerInformationValueMapH_);
+
   // check for back-to-back dimuons
   float angle=0;
   isCosmic=0;
@@ -214,9 +223,19 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             angle = acos(-cross/iimuon->track()->p()/imuon->track()->p());
             if (angle<theAngleCut) isCosmic=1;
           }
-      }        
-    }    
-  } 
+      }
+    }
+  }
+
+  // Analyze L1 information
+  edm::Handle<l1t::MuonBxCollection> muColl;
+  iEvent.getByToken(muCollToken_, muColl);
+
+  // 2015 version
+  Handle<View<reco::Candidate> > reco;
+  Handle<vector<l1extra::L1MuonParticle> > l1s;
+
+  iEvent.getByToken(l1extraToken_, l1s);
 
   iEvent.getByToken(timeMapCmbToken_,timeMap1);
 //  const reco::MuonTimeExtraMap & timeMapCmb = *timeMap1;
@@ -228,39 +247,109 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   int imucount=0;
   for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon){
     
-    bool matched=false;
+    reco::MuonRef muonR(MuCollection,imucount);
+    imucount++;    
+
+    if (imuon->pt()<thePtCut) continue;
+    if (!muon::isLooseMuon(*imuon)) continue;
+    if (debug) 
+      cout << endl << "   Found muon. Pt: " << imuon->pt() << "   eta: " << imuon->eta() << endl;
 
     reco::TrackRef glbTrack = imuon->combinedMuon();
     reco::TrackRef trkTrack = imuon->track();
     reco::TrackRef staTrack = imuon->standAloneMuon();
-
-    reco::MuonRef muonR(MuCollection,imucount);
-    imucount++;    
+    reco::MuonShower muonShowerInformation = (*muonShowerInformationValueMapH_)[muonR];
     
     // MuonTimeExtra timec = timeMapCmb[muonR];
     MuonTimeExtra timedt = timeMapDT[muonR];
     MuonTimeExtra timecsc = timeMapCSC[muonR];
     reco::MuonTime timerpc = imuon->rpcTime();
     reco::MuonTime timemuon = imuon->time();
-        
-    if (imuon->pt()<thePtCut) continue;
-    if (debug) cout << endl << "   Found muon. Pt: " << imuon->pt() << endl;
 
     hasSim = 0;
     isSTA = staTrack.isNonnull();
     isGLB = glbTrack.isNonnull();
     isLoose = muon::isLooseMuon(*imuon);
-    isTight = muon::isTightMuon(*imuon, pvertex );
+//    isTight = muon::isTightMuon(*imuon, pvertex );
+    isTight = muon::isHighPtMuon(*imuon, pvertex );
     isPF = imuon->isPFMuon();
 
-    dxy = imuon->muonBestTrack()->dxy(pvertex.position());
-    dz = imuon->muonBestTrack()->dz(pvertex.position());
+    dxy = imuon->tunePMuonBestTrack()->dxy(pvertex.position());
+    dz = imuon->tunePMuonBestTrack()->dz(pvertex.position());
 
-    pt = imuon->bestTrack()->pt();
-    dPt = imuon->bestTrack()->ptError();
-    eta = imuon->bestTrack()->eta();
-    phi = imuon->bestTrack()->phi();
-    charge = imuon->bestTrack()->charge();
+    // fill muon kinematics
+    pt = imuon->tunePMuonBestTrack()->pt();
+    dPt = imuon->tunePMuonBestTrack()->ptError();
+    eta = imuon->tunePMuonBestTrack()->eta();
+    phi = imuon->tunePMuonBestTrack()->phi();
+    charge = imuon->tunePMuonBestTrack()->charge();
+
+    vector<int> rpchits={0,0,0,0};
+    if (isSTA) rpchits=countRPChits(staTrack,iEvent);
+    
+//    double detaphi=999;
+    int l1idx=0;
+    for (int i=0;i<10;i++) genPt[i]=0;
+    // get L1 information
+    for (int ibx=muColl->getFirstBX(); ibx<=muColl->getLastBX(); ibx++)
+      for (auto it = muColl->begin(ibx); it != muColl->end(ibx); it++){
+        l1t::MuonRef l1muon(muColl, distance(muColl->begin(muColl->getFirstBX()),it) );
+        double deta=fabs(l1muon->eta()-eta);
+        double dphi=fabs(reco::deltaPhi(l1muon->phi(),phi));
+        double dr=sqrt(deta*deta+dphi*dphi);
+        
+        // insert a protection against cross-matching L1 candidates for close-by muons
+        // If the L1 candidate dR w.r.t. a different Loose muon is smaller then don't look at the candidate here
+        // (it's blocked by blowing up the dr so that it's not accepted by the dr<0.15 cut)
+        for(iimuon = muonC.begin(); iimuon != muonC.end(); ++iimuon){
+          if (iimuon!=imuon && iimuon->pt()>thePtCut && muon::isLooseMuon(*iimuon)) {
+            double deta2=fabs(l1muon->eta()-iimuon->tunePMuonBestTrack()->eta());
+            double dphi2=fabs(reco::deltaPhi(l1muon->phi(),iimuon->tunePMuonBestTrack()->phi()));
+            double dr2=sqrt(deta2*deta2+dphi2*dphi2);
+            if (dr2<dr) {
+              dr=1.;
+              break;
+            }
+          }
+        }
+
+        // any L1 match falling inside the 0.2 cone is saved
+        if (dr<0.2) {
+          hasSim=1;
+          genPt[l1idx]=l1muon->pt();
+          genEta[l1idx]=l1muon->eta();
+          genPhi[l1idx]=l1muon->phi();
+          genCharge[l1idx]=l1muon->hwQual();
+          genBX[l1idx]=ibx;
+          if (l1idx==9) cout << " Too many L1 matches..." << endl;
+            else l1idx++;
+        }
+    }
+
+/*
+    int closeidx=0;
+    for (int i = 0, n = l1s->size(); i < n; ++i) {
+      const l1extra::L1MuonParticle & l1muon = (*l1s)[i];
+      double deta=fabs(l1muon.eta()-imuon->bestTrack()->eta());
+      double dphi=fabs(reco::deltaPhi(l1muon.phi(),imuon->bestTrack()->phi()));
+      double dr=sqrt(deta*deta+dphi*dphi);
+      if (dr<detaphi) {
+        detaphi=dr;
+        closeidx=i;
+      }
+    }
+
+    if (detaphi<0.15) {
+      const l1extra::L1MuonParticle & closestL1muon = (*l1s)[closeidx];
+//      cout << " closest L1 pt: " << closestL1muon.pt() << "   dr: " << detaphi << "   BX" << closestL1muon.bx() << endl;
+      hasSim=1;
+      genPt=closestL1muon.pt();
+      genEta=closestL1muon.eta();
+      genPhi=closestL1muon.phi();
+      genBX=closestL1muon.bx();
+      genCharge=closestL1muon.charge();
+    }
+*/
 
     muNdof = timemuon.nDof;
     muTime = timemuon.timeAtIpInOut;
@@ -275,6 +364,15 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     cscNdof = timecsc.nDof();
     cscTime = timecsc.timeAtIpInOut();
 
+    // read muon shower information
+    for (int i=0; i<4; i++) { // Loop on stations
+      //float sizet    = (muonShowerInformation.stationShowerSizeT).at(i);     // the transverse size of the hit cluster
+      nhits[i]  = (muonShowerInformation.nStationHits).at(i);        // number of all the muon RecHits per chamber crossed by a track (1D hits)
+      nrpchits[i] = rpchits.at(i);                                   // number of RPC hits in a 0.15 cone around the track
+      ssize[i]  = (muonShowerInformation.stationShowerDeltaR).at(i); // the radius of the cone containing all the hits around the track
+    }
+
+    bool matched=false;
     if (tpart) {
       for (TrackingParticleCollection::const_iterator iTrack = tPC->begin(); iTrack != tPC->end(); ++iTrack)
         if (fabs(iTrack->pdgId())==13 && iTrack->p4().Pt()>2) {
@@ -282,19 +380,19 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             if ((fabs(iTrack->p4().eta()-imuon->track()->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack->p4().phi(),imuon->track()->momentum().phi()))<0.05)) 
               matched=true;
-          if (staTrack.isNonnull())       
+          if (staTrack.isNonnull())
             if ((fabs(iTrack->p4().eta()-staTrack->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack->p4().phi(),staTrack->momentum().phi()))<0.05))
-	      matched=true;        
-	      
-	  if (matched==true) {      
-	    hasSim=1;
-            genPt=iTrack->p4().Pt();
-            genEta=iTrack->p4().Eta();
-            genPhi=iTrack->p4().Phi();
-            genBX=iTrack->eventId().bunchCrossing();
-            genCharge=iTrack->pdgId()/13;
-	    break;
+              matched=true;
+
+          if (matched==true) {
+            hasSim=1;
+            genPt[0]=iTrack->p4().Pt();
+            genEta[0]=iTrack->p4().Eta();
+            genPhi[0]=iTrack->p4().Phi();
+            genBX[0]=iTrack->eventId().bunchCrossing();
+            genCharge[0]=iTrack->pdgId()/13;
+            break;
           }
         }
     }
@@ -314,11 +412,11 @@ MuonNtupleFiller::beginJob()
 
    t = new TTree("MuTree", "MuTree");
    t->Branch("hasSim", &hasSim, "hasSim/O");
-   t->Branch("genCharge", &genCharge, "genCharge/I");
-   t->Branch("genPt", &genPt, "genPt/D");
-   t->Branch("genPhi", &genPhi, "genPhi/D");
-   t->Branch("genEta", &genEta, "genEta/D");
-   t->Branch("genBX", &genBX, "genBX/I");
+   t->Branch("genCharge", &genCharge, "genCharge[10]/I");
+   t->Branch("genPt", &genPt, "genPt[10]/F");
+   t->Branch("genPhi", &genPhi, "genPhi[10]/F");
+   t->Branch("genEta", &genEta, "genEta[10]/F");
+   t->Branch("genBX", &genBX, "genBX[10]/I");
 
    t->Branch("event_run", &event_run, "event_run/i");
    t->Branch("event_lumi", &event_lumi, "event_lumi/i");
@@ -333,23 +431,27 @@ MuonNtupleFiller::beginJob()
    t->Branch("isTight", &isTight, "isTight/O");
 
    t->Branch("charge", &charge, "charge/I");
-   t->Branch("pt", &pt, "pt/D");
-   t->Branch("phi", &phi, "phi/D");
-   t->Branch("eta", &eta, "eta/D");
-   t->Branch("dPt", &dPt, "dPt/D");
-   t->Branch("dz", &dz, "dz/D");
-   t->Branch("dxy", &dxy, "dxy/D");
+   t->Branch("pt", &pt, "pt/F");
+   t->Branch("phi", &phi, "phi/F");
+   t->Branch("eta", &eta, "eta/F");
+   t->Branch("dPt", &dPt, "dPt/F");
+   t->Branch("dz", &dz, "dz/F");
+   t->Branch("dxy", &dxy, "dxy/F");
 
-   t->Branch("muNdof", &muNdof, "muNdof/I");
-   t->Branch("muTime", &muTime, "muTime/D");
-   t->Branch("muTimeErr", &muTimeErr, "muTimeErr/D");
+   t->Branch("nhits", &nhits, "nhits[4]/I");
+   t->Branch("nrpchits", &nrpchits, "nrpchits[4]/I");
+   t->Branch("ssize", &ssize, "ssize[4]/F");
+
+//   t->Branch("muNdof", &muNdof, "muNdof/I");
+//   t->Branch("muTime", &muTime, "muTime/F");
+//   t->Branch("muTimeErr", &muTimeErr, "muTimeErr/F");
    t->Branch("dtNdof", &dtNdof, "dtNdof/I");
-   t->Branch("dtTime", &dtTime, "dtTime/D");
-   t->Branch("cscNdof", &cscNdof, "cscNdof/I");
-   t->Branch("cscTime", &cscTime, "cscTime/D");
+   t->Branch("dtTime", &dtTime, "dtTime/F");
+//   t->Branch("cscNdof", &cscNdof, "cscNdof/I");
+//   t->Branch("cscTime", &cscTime, "cscTime/F");
    t->Branch("rpcNdof", &rpcNdof, "rpcNdof/I");
-   t->Branch("rpcTime", &rpcTime, "rpcTime/D");
-   t->Branch("rpcTimeErr", &rpcTimeErr, "rpcTimeErr/D");
+   t->Branch("rpcTime", &rpcTime, "rpcTime/F");
+   t->Branch("rpcTimeErr", &rpcTimeErr, "rpcTimeErr/F");
 
 }
 
@@ -371,6 +473,45 @@ double MuonNtupleFiller::iMass(reco::TrackRef imuon, reco::TrackRef iimuon) {
   math::XYZTLorentzVector psum = ip4+iip4;
   double mmumu2 = psum.Dot(psum);
   return sqrt(mmumu2);
+}
+
+vector<int> MuonNtupleFiller::countRPChits(reco::TrackRef muon, const edm::Event& iEvent) {
+  double RPCCut = 60.;
+
+  int layercount[8]={0,0,0,0,0,0,0,0};
+  vector<int> stations;
+  edm::Handle<RPCRecHitCollection> rpcRecHits;
+  iEvent.getByToken(rpcRecHitToken_, rpcRecHits);
+
+  for(RPCRecHitCollection::const_iterator hitRPC = rpcRecHits->begin(); hitRPC != rpcRecHits->end(); hitRPC++) {
+    if ( !hitRPC->isValid()) continue;
+    RPCDetId myChamber((*hitRPC).geographicalId().rawId());
+    LocalPoint posLocalRPC = hitRPC->localPosition();
+
+    for(trackingRecHit_iterator hitC = muon->recHitsBegin(); hitC != muon->recHitsEnd(); ++hitC) {
+      if (!(*hitC)->isValid()) continue; 
+      if ( (*hitC)->geographicalId().det() != DetId::Muon ) continue; 
+      if ( (*hitC)->geographicalId().subdetId() != MuonSubdetId::RPC ) continue;
+
+      DetId id = (*hitC)->geographicalId();
+      RPCDetId rpcDetIdHit(id.rawId());
+      if (rpcDetIdHit!=myChamber) continue;
+      LocalPoint posLocalMuon = (*hitC)->localPosition();
+      if((fabs(posLocalMuon.x()-posLocalRPC.x())<RPCCut)) 
+        layercount[(rpcDetIdHit.station()-1)*2+rpcDetIdHit.layer()-1]++;
+    }
+  }
+  
+  stations.push_back(max(layercount[0],layercount[1]));
+  stations.push_back(max(layercount[2],layercount[3]));
+  stations.push_back(layercount[4]);
+  stations.push_back(layercount[6]);
+  
+//  for (int i=0;i<8;i++) cout << " L:" << layercount[i];
+//  for (int i=0;i<4;i++) cout << " S:" << stations[i];
+//  cout << endl;
+  
+  return stations;
 }
 
 
