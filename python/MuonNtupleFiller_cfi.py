@@ -10,7 +10,7 @@ muonNtupleFiller = cms.EDAnalyzer("MuonNtupleFiller",
 
     # cosmic ID back-to-back angle cut 
     angleCut = cms.double(0.02),
-    PtCut = cms.double(40.0),
+    PtCut = cms.double(200.0),
 
     open = cms.string('recreate'),
     out = cms.string('muonNtuple.root'),

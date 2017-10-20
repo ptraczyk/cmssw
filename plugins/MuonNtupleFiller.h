@@ -72,6 +72,8 @@ private:
 
   double iMass(reco::TrackRef imuon, reco::TrackRef iimuon);
   vector<int> countRPChits(reco::TrackRef muon, const edm::Event& iEvent);
+  vector<int> countDThits(reco::TrackRef muon, const edm::Event& iEvent);
+  vector<int> countCSChits(reco::TrackRef muon, const edm::Event& iEvent);
 
   // ----------member data ---------------------------
 
@@ -100,6 +102,8 @@ private:
   edm::EDGetTokenT<TrackingParticleCollection> trackingParticleToken_;
   edm::EDGetTokenT<vector<l1extra::L1MuonParticle>> l1extraToken_;
   edm::EDGetTokenT<RPCRecHitCollection> rpcRecHitToken_;
+  edm::EDGetTokenT<CSCSegmentCollection> cscSegmentToken_;
+  edm::EDGetTokenT<DTRecSegment4DCollection> dtSegmentToken_;
 
   Handle<reco::MuonCollection> MuCollection;
   Handle<reco::MuonCollection> MuCollectionT;
@@ -147,10 +151,12 @@ private:
   float dPt;
   float dz;
   float dxy;
+  float tkiso;
   
   int nhits[4];
   int nrpchits[4];
-  float ssize[4];
+  int ndtsegs[4];
+  int ncscsegs[4];
   
 // muon timing
   int muNdof;

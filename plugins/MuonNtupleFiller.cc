@@ -102,19 +102,25 @@ MuonNtupleFiller::MuonNtupleFiller(const edm::ParameterSet& iConfig)
   thePtCut(iConfig.getParameter<double>("PtCut"))
 {
   edm::ConsumesCollector collector(consumesCollector());
+
   beamSpotToken_ = consumes<reco::BeamSpot>(edm::InputTag("offlineBeamSpot"));
+  vertexToken_ = consumes<reco::VertexCollection>(edm::InputTag("offlinePrimaryVertices"));
   trackToken_ = consumes<reco::TrackCollection>(TKtrackTags_);
+
   muonToken_ = consumes<reco::MuonCollection>(MuonTags_);
   muons_muonShowerInformation_token_  = consumes<edm::ValueMap<reco::MuonShower>>(edm::InputTag("muons", "muonShowerInformation", "RECO"));
   muCollToken_ = consumes<l1t::MuonBxCollection>(edm::InputTag("gmtStage2Digis","Muon"));
-  vertexToken_ = consumes<reco::VertexCollection>(edm::InputTag("offlinePrimaryVertices"));
+
   timeMapCmbToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"combined"));
   timeMapDTToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"dt"));
   timeMapCSCToken_ = consumes<reco::MuonTimeExtraMap>(edm::InputTag(TimeTags_.label(),"csc"));
+
   genParticleToken_ = consumes<GenParticleCollection>(edm::InputTag("genParticles"));
   trackingParticleToken_ = consumes<TrackingParticleCollection>(edm::InputTag("mix","MergedTrackTruth"));
+
   rpcRecHitToken_ = consumes<RPCRecHitCollection>(edm::InputTag("rpcRecHits")) ;
-  l1extraToken_ = consumes<vector<l1extra::L1MuonParticle>>(edm::InputTag("l1extraParticles"));
+  cscSegmentToken_ = consumes<CSCSegmentCollection>(edm::InputTag("cscSegments"));
+  dtSegmentToken_ = consumes<DTRecSegment4DCollection>(edm::InputTag("dt4DSegments"));
 }
 
 
@@ -211,11 +217,18 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   edm::Handle<edm::ValueMap<reco::MuonShower> > muonShowerInformationValueMapH_;
   iEvent.getByToken(muons_muonShowerInformation_token_, muonShowerInformationValueMapH_);
 
-  // check for back-to-back dimuons
+  double maxpt=0;
+
   float angle=0;
   isCosmic=0;
-  if (muonC.size()>1) {
-    for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon) {
+  for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon) {
+
+    if (muon::isHighPtMuon(*imuon, pvertex )) 
+      if (imuon->tunePMuonBestTrack()->pt()>maxpt) 
+        maxpt=imuon->tunePMuonBestTrack()->pt();
+      
+    // check for back-to-back dimuons
+    if (muonC.size()>1) {
       if ((imuon->isGlobalMuon() || imuon->isTrackerMuon()) && (imuon->track().isNonnull())) {
         for(iimuon = imuon+1; iimuon != muonC.end(); ++iimuon) 
           if ((iimuon->isGlobalMuon() || iimuon->isTrackerMuon()) && (iimuon->track().isNonnull())) {
@@ -227,15 +240,12 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     }
   }
 
+  // only store events with a good quality high pT muon
+  if (maxpt<thePtCut) return;
+
   // Analyze L1 information
   edm::Handle<l1t::MuonBxCollection> muColl;
   iEvent.getByToken(muCollToken_, muColl);
-
-  // 2015 version
-  Handle<View<reco::Candidate> > reco;
-  Handle<vector<l1extra::L1MuonParticle> > l1s;
-
-  iEvent.getByToken(l1extraToken_, l1s);
 
   iEvent.getByToken(timeMapCmbToken_,timeMap1);
 //  const reco::MuonTimeExtraMap & timeMapCmb = *timeMap1;
@@ -245,13 +255,16 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   const reco::MuonTimeExtraMap & timeMapCSC = *timeMap3;
 
   int imucount=0;
+
+  // ---------------------------------------------------------------------------------------------
+  // ----------------------- main loop over muons ------------------------------------------------
+  // ---------------------------------------------------------------------------------------------
+
   for(imuon = muonC.begin(); imuon != muonC.end(); ++imuon){
     
     reco::MuonRef muonR(MuCollection,imucount);
     imucount++;    
 
-    if (imuon->pt()<thePtCut) continue;
-    if (!muon::isLooseMuon(*imuon)) continue;
     if (debug) 
       cout << endl << "   Found muon. Pt: " << imuon->pt() << "   eta: " << imuon->eta() << endl;
 
@@ -270,12 +283,8 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     isSTA = staTrack.isNonnull();
     isGLB = glbTrack.isNonnull();
     isLoose = muon::isLooseMuon(*imuon);
-//    isTight = muon::isTightMuon(*imuon, pvertex );
     isTight = muon::isHighPtMuon(*imuon, pvertex );
     isPF = imuon->isPFMuon();
-
-    dxy = imuon->tunePMuonBestTrack()->dxy(pvertex.position());
-    dz = imuon->tunePMuonBestTrack()->dz(pvertex.position());
 
     // fill muon kinematics
     pt = imuon->tunePMuonBestTrack()->pt();
@@ -283,9 +292,18 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     eta = imuon->tunePMuonBestTrack()->eta();
     phi = imuon->tunePMuonBestTrack()->phi();
     charge = imuon->tunePMuonBestTrack()->charge();
+    dxy = imuon->tunePMuonBestTrack()->dxy(pvertex.position());
+    dz = imuon->tunePMuonBestTrack()->dz(pvertex.position());
+    tkiso=imuon->isolationR03().sumPt/pt;
 
     vector<int> rpchits={0,0,0,0};
-    if (isSTA) rpchits=countRPChits(staTrack,iEvent);
+    vector<int> cschits={0,0,0,0};
+    vector<int> dthits={0,0,0,0};
+    if (isSTA) {
+      rpchits=countRPChits(staTrack,iEvent);
+      dthits=countDThits(staTrack,iEvent);
+      cschits=countCSChits(staTrack,iEvent);
+    }
     
 //    double detaphi=999;
     int l1idx=0;
@@ -326,31 +344,6 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
         }
     }
 
-/*
-    int closeidx=0;
-    for (int i = 0, n = l1s->size(); i < n; ++i) {
-      const l1extra::L1MuonParticle & l1muon = (*l1s)[i];
-      double deta=fabs(l1muon.eta()-imuon->bestTrack()->eta());
-      double dphi=fabs(reco::deltaPhi(l1muon.phi(),imuon->bestTrack()->phi()));
-      double dr=sqrt(deta*deta+dphi*dphi);
-      if (dr<detaphi) {
-        detaphi=dr;
-        closeidx=i;
-      }
-    }
-
-    if (detaphi<0.15) {
-      const l1extra::L1MuonParticle & closestL1muon = (*l1s)[closeidx];
-//      cout << " closest L1 pt: " << closestL1muon.pt() << "   dr: " << detaphi << "   BX" << closestL1muon.bx() << endl;
-      hasSim=1;
-      genPt=closestL1muon.pt();
-      genEta=closestL1muon.eta();
-      genPhi=closestL1muon.phi();
-      genBX=closestL1muon.bx();
-      genCharge=closestL1muon.charge();
-    }
-*/
-
     muNdof = timemuon.nDof;
     muTime = timemuon.timeAtIpInOut;
     muTimeErr = timemuon.timeAtIpInOutErr;
@@ -369,7 +362,8 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
       //float sizet    = (muonShowerInformation.stationShowerSizeT).at(i);     // the transverse size of the hit cluster
       nhits[i]  = (muonShowerInformation.nStationHits).at(i);        // number of all the muon RecHits per chamber crossed by a track (1D hits)
       nrpchits[i] = rpchits.at(i);                                   // number of RPC hits in a 0.15 cone around the track
-      ssize[i]  = (muonShowerInformation.stationShowerDeltaR).at(i); // the radius of the cone containing all the hits around the track
+      ndtsegs[i] = dthits.at(i);
+      ncscsegs[i] = cschits.at(i);
     }
 
     bool matched=false;
@@ -437,10 +431,12 @@ MuonNtupleFiller::beginJob()
    t->Branch("dPt", &dPt, "dPt/F");
    t->Branch("dz", &dz, "dz/F");
    t->Branch("dxy", &dxy, "dxy/F");
+   t->Branch("tkiso", &tkiso, "tkiso/F");
 
    t->Branch("nhits", &nhits, "nhits[4]/I");
    t->Branch("nrpchits", &nrpchits, "nrpchits[4]/I");
-   t->Branch("ssize", &ssize, "ssize[4]/F");
+   t->Branch("ndtsegs", &ndtsegs, "ndtsegs[4]/I");
+   t->Branch("ncscsegs", &ncscsegs, "ncscsegs[4]/I");
 
 //   t->Branch("muNdof", &muNdof, "muNdof/I");
 //   t->Branch("muTime", &muTime, "muTime/F");
@@ -485,6 +481,9 @@ vector<int> MuonNtupleFiller::countRPChits(reco::TrackRef muon, const edm::Event
 
   for(RPCRecHitCollection::const_iterator hitRPC = rpcRecHits->begin(); hitRPC != rpcRecHits->end(); hitRPC++) {
     if ( !hitRPC->isValid()) continue;
+    
+    // only cound in-time RPC hits
+    if ( hitRPC->BunchX()!=0) continue;
     RPCDetId myChamber((*hitRPC).geographicalId().rawId());
     LocalPoint posLocalRPC = hitRPC->localPosition();
 
@@ -493,9 +492,12 @@ vector<int> MuonNtupleFiller::countRPChits(reco::TrackRef muon, const edm::Event
       if ( (*hitC)->geographicalId().det() != DetId::Muon ) continue; 
       if ( (*hitC)->geographicalId().subdetId() != MuonSubdetId::RPC ) continue;
 
+      // Check that we're in the same RPC chamber
       DetId id = (*hitC)->geographicalId();
       RPCDetId rpcDetIdHit(id.rawId());
       if (rpcDetIdHit!=myChamber) continue;
+
+      // Compare local positions of the muon hit and the hit being considered
       LocalPoint posLocalMuon = (*hitC)->localPosition();
       if((fabs(posLocalMuon.x()-posLocalRPC.x())<RPCCut)) 
         layercount[(rpcDetIdHit.station()-1)*2+rpcDetIdHit.layer()-1]++;
@@ -507,12 +509,67 @@ vector<int> MuonNtupleFiller::countRPChits(reco::TrackRef muon, const edm::Event
   stations.push_back(layercount[4]);
   stations.push_back(layercount[6]);
   
-//  for (int i=0;i<8;i++) cout << " L:" << layercount[i];
-//  for (int i=0;i<4;i++) cout << " S:" << stations[i];
-//  cout << endl;
-  
   return stations;
 }
+
+
+vector<int> MuonNtupleFiller::countDThits(reco::TrackRef muon, const edm::Event& iEvent) {
+  double DTCut = 60.;
+
+  vector<int> stations={0,0,0,0};
+
+  edm::Handle<DTRecSegment4DCollection> dtRecHits;
+  iEvent.getByToken(dtSegmentToken_, dtRecHits);
+
+  for (auto rechit = dtRecHits->begin(); rechit!=dtRecHits->end();++rechit) {
+
+    // only look at Phi segments
+    if (!rechit->hasPhi()) continue;
+
+    // take the Phi component of the 4D segment
+    const DTRecSegment2D* segmPhi;
+    segmPhi = dynamic_cast<const DTRecSegment2D*>(rechit->phiSegment());
+
+    LocalPoint pointLocal = segmPhi->localPosition();
+    DTChamberId myChamber((*segmPhi).geographicalId().rawId());
+
+    // Loop over muon recHits
+    for(trackingRecHit_iterator hitC = muon->recHitsBegin(); hitC != muon->recHitsEnd(); ++hitC) {
+      if (!(*hitC)->isValid()) continue; 
+      if ( (*hitC)->geographicalId().det() != DetId::Muon ) continue; 
+      if ( (*hitC)->geographicalId().subdetId() != MuonSubdetId::DT ) continue;
+
+      // Pick the one in the same DT Chamber as the muon AND not in SuperLayer 2 (Theta SL)
+      DetId idT = (*hitC)->geographicalId();
+      DTChamberId dtDetIdHitT(idT.rawId());
+      DTSuperLayerId dtDetLayerIdHitT(idT.rawId());
+      if (!(dtDetIdHitT==myChamber) || (dtDetLayerIdHitT.superlayer()==2)) continue; 
+
+      // Compare local positions of the muon hit and the hit being considered
+      LocalPoint posLocalMuon = (*hitC)->localPosition();
+      
+      cout << " Muon: " << posLocalMuon << "    Segment: " << pointLocal << endl;
+      
+      if((fabs(posLocalMuon.x()-pointLocal.x())<DTCut)) 
+        stations[(myChamber.station()-1)]++;
+    }
+  }
+
+  return stations;
+}
+
+
+vector<int> MuonNtupleFiller::countCSChits(reco::TrackRef muon, const edm::Event& iEvent) {
+//  double CSCCut = 60.;
+
+  vector<int> stations={0,0,0,0};
+
+  edm::Handle<CSCSegmentCollection> cscRecHits;
+  iEvent.getByToken(cscSegmentToken_, cscRecHits);  
+
+  return stations;
+}
+
 
 
 //define this as a plug-in
