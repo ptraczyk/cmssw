@@ -26,6 +26,7 @@
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
+#include "DataFormats/RPCRecHit/interface/RPCRecHitCollection.h"
 #include "DataFormats/DTRecHit/interface/DTRecSegment4DCollection.h"
 #include "DataFormats/DTRecHit/interface/DTRecHitCollection.h"
 #include "DataFormats/CSCRecHit/interface/CSCSegmentCollection.h"
@@ -39,7 +40,7 @@
 
 #include <TROOT.h>
 #include <TSystem.h>
-#include "Riostream.h"    
+#include "Riostream.h"
 #include "TObject.h"
 #include <TTree.h>
 
@@ -83,7 +84,7 @@ private:
   edm::InputTag SIMtrackTags_; 
 
   string out, open;
-  bool theDebug;
+  bool debug_;
   bool doSim;
   double theAngleCut;
   double thePtCut;

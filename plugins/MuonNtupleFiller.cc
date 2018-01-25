@@ -96,7 +96,7 @@ MuonNtupleFiller::MuonNtupleFiller(const edm::ParameterSet& iConfig)
   TimeTags_(iConfig.getUntrackedParameter<edm::InputTag>("Timing")),
   out(iConfig.getParameter<string>("out")),
   open(iConfig.getParameter<string>("open")),
-  theDebug(iConfig.getParameter<bool>("debug")),
+  debug_(iConfig.getParameter<bool>("debug")),
   doSim(iConfig.getParameter<bool>("mctruthMatching")),
   theAngleCut(iConfig.getParameter<double>("angleCut")),
   thePtCut(iConfig.getParameter<double>("PtCut"))
@@ -145,14 +145,13 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   using reco::TrackCollection;
   using reco::MuonCollection;
 
-  bool debug=theDebug;
   bool tpart=false;
 
   event_run = iEvent.id().run();
   event_lumi = iEvent.id().luminosityBlock();
   event_event = iEvent.id().event();
 
-  if (debug)
+  if (debug_)
     cout << endl << " Event: " << iEvent.id() << "  Orbit: " << iEvent.orbitNumber() << "  BX: " << iEvent.bunchCrossing() << endl;
 
   reco::Vertex::Point posVtx;
@@ -190,7 +189,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
   edm::Handle<TrackingParticleCollection>  TruthTrackContainer ;
   iEvent.getByToken(trackingParticleToken_, TruthTrackContainer );
   if (!TruthTrackContainer.isValid()) {
-    if (debug) cout << " No TrackingParticle data in the Event" << endl;
+    if (debug_) cout << " No TrackingParticle data in the Event" << endl;
   } else tpart=true;
 
   const TrackingParticleCollection *tPC=0;
@@ -210,7 +209,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   iEvent.getByToken(muonToken_,MuCollection);
   const reco::MuonCollection muonC = *(MuCollection.product());
-  if (debug) cout << " Muon collection size: " << muonC.size() << endl;
+  if (debug_) cout << " Muon collection size: " << muonC.size() << endl;
   if (!muonC.size()) return;
   MuonCollection::const_iterator imuon,iimuon;
 
@@ -243,7 +242,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
   // only store events with a good quality high pT muon
   if (maxpt<thePtCut) {
-    if (debug) cout << "max pT below threshold at : " << maxpt << " GeV. Aborting" << endl;
+    if (debug_) cout << "max pT below threshold at : " << maxpt << " GeV. Aborting" << endl;
     return;
   }
 
@@ -269,7 +268,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     reco::MuonRef muonR(MuCollection,imucount);
     imucount++;    
 
-    if (debug) 
+    if (debug_) 
       cout << endl << "   Found muon. Pt: " << imuon->pt() << "   eta: " << imuon->eta() << endl;
 
     reco::TrackRef glbTrack = imuon->combinedMuon();
@@ -380,7 +379,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
       for (const auto &iTrack : *genParticles) {
         if (fabs(iTrack.pdgId())==13 && iTrack.p4().Pt()>2) 
-          if (debug) cout << iTrack.p4().Pt() << endl;
+          if (debug_) cout << iTrack.p4().Pt() << endl;
           if (trkTrack.isNonnull())
             if ((fabs(iTrack.p4().eta()-imuon->track()->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack.p4().phi(),imuon->track()->momentum().phi()))<0.05)) 
@@ -404,7 +403,7 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     if (tpart) {
       for (const auto &iTrack : *tPC)
         if (fabs(iTrack.pdgId())==13 && iTrack.p4().Pt()>2) {
-          if (debug) cout << iTrack.p4().Pt() << endl;
+          if (debug_) cout << iTrack.p4().Pt() << endl;
           if (trkTrack.isNonnull())
             if ((fabs(iTrack.p4().eta()-imuon->track()->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack.p4().phi(),imuon->track()->momentum().phi()))<0.05)) 
@@ -563,7 +562,7 @@ vector<int> MuonNtupleFiller::countDThits(reco::TrackRef muon, const edm::Event&
   edm::Handle<DTRecSegment4DCollection> dtRecHits;
   iEvent.getByToken(dtSegmentToken_, dtRecHits);
   
-  if (debug) cout << endl << " *** DT Segment search" << endl;
+  if (debug_) cout << endl << " *** DT Segment search" << endl;
 
   // Loop over muon recHits
   for(trackingRecHit_iterator muonHit = muon->recHitsBegin(); muonHit != muon->recHitsEnd(); ++muonHit) {
@@ -576,7 +575,7 @@ vector<int> MuonNtupleFiller::countDThits(reco::TrackRef muon, const edm::Event&
 //    DTSuperLayerId dtDetLayerIdHitT(idT.rawId());
     LocalPoint posLocalMuon = (*muonHit)->localPosition();
 
-    if (debug) cout << " Station " << dtDetIdHitT.station() << "  Muon hit: " << posLocalMuon << endl;
+    if (debug_) cout << " Station " << dtDetIdHitT.station() << "  Muon hit: " << posLocalMuon << endl;
 
     vector <float> phi,zed;
     // loop over vector, if further than ~1cm from each entry and closer than ~60cm from the first one -> add as new entry
@@ -614,12 +613,12 @@ vector<int> MuonNtupleFiller::countDThits(reco::TrackRef muon, const edm::Event&
         if (!found) zed.push_back(posLocalHit.y());
       }
       
-      if (debug) cout << "           Segment: " << posLocalHit << "  found Phi " << phi.size() << "  found Zed " << zed.size() << endl;
+      if (debug_) cout << "           Segment: " << posLocalHit << "  found Phi " << phi.size() << "  found Zed " << zed.size() << endl;
       stations[myChamber.station()-1]=max(phi.size(),zed.size());
     }
   }
 
-  if (debug) {
+  if (debug_) {
     cout << " DT Shower pattern: ";
     for (int i=0;i<4;i++) cout << stations[i] << " ";
     cout << endl;
@@ -645,7 +644,7 @@ vector<int> MuonNtupleFiller::countCSChits(reco::TrackRef muon, const edm::Event
     CSCDetId cscDetIdHitT((*muonHit)->geographicalId());
     LocalPoint posLocalMuon = (*muonHit)->localPosition();
 
-    if (debug) cout << " Muon hit: " << posLocalMuon << endl;
+    if (debug_) cout << " Muon hit: " << posLocalMuon << endl;
 
     for (auto rechit = cscRecHits->begin(); rechit!=cscRecHits->end();++rechit) {
 
@@ -654,12 +653,12 @@ vector<int> MuonNtupleFiller::countCSChits(reco::TrackRef muon, const edm::Event
       if (!(cscDetIdHitT==myChamber)) continue;
 
       LocalPoint posLocalHit = rechit->localPosition();
-      if (debug) cout << "          Segment: " << posLocalHit << endl;
+      if (debug_) cout << "          Segment: " << posLocalHit << endl;
       if ((posLocalMuon-posLocalHit).mag()<CSCCut) stations[myChamber.station()-1]++;
     }
   }
 
-  if (debug) {
+  if (debug_) {
     cout << " CSC Shower pattern: ";
     for (int i=0;i<4;i++) cout << stations[i] << " ";
     cout << endl;
