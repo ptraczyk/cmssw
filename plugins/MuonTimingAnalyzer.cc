@@ -334,7 +334,7 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
     }
 
     double d0=0.;
-    if (glbTrack.isNonnull()) d0 = -1.*glbTrack->dxy(beamspot);    
+    if (glbTrack.isNonnull()) d0 = -1.*glbTrack->dxy(beamspot);
     if (staTrack.isNonnull()) stapt=(*staTrack).pt();
 
     if (tpart) {
@@ -344,12 +344,12 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
             if ((fabs(iTrack->p4().eta()-imuon->track()->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack->p4().phi(),imuon->track()->momentum().phi()))<0.05)) 
               matched=true;
-          if (staTrack.isNonnull())       
+          if (staTrack.isNonnull())
             if ((fabs(iTrack->p4().eta()-staTrack->momentum().eta())<0.05) &&
                 (fabs(reco::deltaPhi(iTrack->p4().phi(),staTrack->momentum().phi()))<0.05))
-	      matched=true;        
+	      matched=true;
 	      
-	  if (matched==true) {      
+	  if (matched==true) {
             genpt=iTrack->p4().Pt();
             if (debug) {
               cout << " Matched muon BX: " << iTrack->eventId().bunchCrossing();
@@ -416,13 +416,13 @@ MuonTimingAnalyzer::analyze(const edm::Event& iEvent, const edm::EventSetup& iSe
         reco::TrackRef dytTrack = imuon->dytTrack();
 
         cout << "|     Global Track ";
-        dumpTrack(fmsTrack);      
+        dumpTrack(fmsTrack);
         cout << "|     FMS Track ";
-        dumpTrack(pmrTrack);      
+        dumpTrack(pmrTrack);
         cout << "|     Picky Track ";
-        dumpTrack(dytTrack);      
+        dumpTrack(dytTrack);
         cout << "|     DYT Track ";
-        dumpTrack(glbTrack);      
+        dumpTrack(glbTrack);
       }
       cout << endl;
     }

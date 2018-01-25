@@ -22,7 +22,6 @@
 #include "DataFormats/TrackReco/interface/TrackToTrackMap.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtra.h"
 #include "DataFormats/MuonReco/interface/MuonTimeExtraMap.h"
-#include "RecoMuon/TrackingTools/interface/MuonSegmentMatcher.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
 #include "DataFormats/VertexReco/interface/VertexFwd.h"
 
@@ -127,9 +126,14 @@ private:
   // ***** Tree structure *******
 // generator info (if available)
   bool hasSim;
-  int genCharge[10];
-  float genPt[10], genPhi[10], genEta[10];
-  int genBX[10];
+  int genCharge;
+  float genPt, genPhi, genEta;
+  int genBX;
+
+  bool hasL1;
+  int l1Qual[10];
+  float l1Pt[10], l1Phi[10], l1Eta[10];
+  int l1BX[10];
 
 // event info
   unsigned int event_run;
@@ -155,8 +159,8 @@ private:
   
   int nhits[4];
   int nrpchits[4];
-  int ndtsegs[4];
-  int ncscsegs[4];
+  int nsegs[4];
+  int nmatches[4];
   
 // muon timing
   int muNdof;
