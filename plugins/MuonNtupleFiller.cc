@@ -300,15 +300,15 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     tkiso=imuon->isolationR03().sumPt/pt;
 
     vector<int> rpchits={0,0,0,0};
-    vector<int> dthits={0,0,0,0};
-    vector<int> cschits={0,0,0,0};
+    vector<int> count_segments={0,0,0,0};
+    vector<int> count_matches={0,0,0,0};
     if (isSTA) {
       rpchits=countRPChits(staTrack,iEvent);
-      cschits=countDThits(staTrack,iEvent);
+      count_segments=countDThits(staTrack,iEvent);
       
       for (const auto &ch : imuon->matches()) {
         int nsegs=ch.segmentMatches.size();
-        if (nsegs>dthits[ch.station()-1]) dthits[ch.station()-1]=nsegs;
+        if (nsegs>count_matches[ch.station()-1]) count_matches[ch.station()-1]=nsegs;
       }
       
     }
@@ -352,6 +352,8 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
             else l1idx++;
         }
     }
+    
+    if (debug_) cout << " found " << l1idx << " L1 matches." << endl;
 
     muNdof = timemuon.nDof;
     muTime = timemuon.timeAtIpInOut;
@@ -368,15 +370,15 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     // read muon shower information
     for (int i=0; i<4; i++) { // Loop on stations
-      //float sizet    = (muonShowerInformation.stationShowerSizeT).at(i);     // the transverse size of the hit cluster
       nhits[i]  = (muonShowerInformation.nStationHits).at(i);        // number of all the muon RecHits per chamber crossed by a track (1D hits)
       nrpchits[i] = rpchits.at(i);                                   // number of RPC hits in a 0.15 cone around the track
-      nsegs[i] = dthits.at(i);
-      nmatches[i] = cschits.at(i);
+      nsegs[i] = count_segments.at(i);
+      nmatches[i] = count_matches.at(i);
     }
 
     bool matched=false;
 
+    if (doSim) 
       for (const auto &iTrack : *genParticles) {
         if (fabs(iTrack.pdgId())==13 && iTrack.p4().Pt()>2) 
           if (debug_) cout << iTrack.p4().Pt() << endl;
