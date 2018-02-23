@@ -379,8 +379,8 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     bool matched=false;
 
     if (doSim) 
-      for (const auto &iTrack : *genParticles) {
-        if (fabs(iTrack.pdgId())==13 && iTrack.p4().Pt()>2) 
+      for (const auto &iTrack : *genParticles) 
+        if (fabs(iTrack.pdgId())==13 && iTrack.p4().Pt()>2) {
           if (debug_) cout << iTrack.p4().Pt() << endl;
           if (trkTrack.isNonnull())
             if ((fabs(iTrack.p4().eta()-imuon->track()->momentum().eta())<0.05) &&
@@ -481,13 +481,13 @@ MuonNtupleFiller::beginJob()
    t->Branch("nsegs", &nsegs, "nsegs[4]/I");
    t->Branch("nmatches", &nmatches, "nmatches[4]/I");
 
-//   t->Branch("muNdof", &muNdof, "muNdof/I");
-//   t->Branch("muTime", &muTime, "muTime/F");
-//   t->Branch("muTimeErr", &muTimeErr, "muTimeErr/F");
+   t->Branch("muNdof", &muNdof, "muNdof/I");
+   t->Branch("muTime", &muTime, "muTime/F");
+   t->Branch("muTimeErr", &muTimeErr, "muTimeErr/F");
    t->Branch("dtNdof", &dtNdof, "dtNdof/I");
    t->Branch("dtTime", &dtTime, "dtTime/F");
-//   t->Branch("cscNdof", &cscNdof, "cscNdof/I");
-//   t->Branch("cscTime", &cscTime, "cscTime/F");
+   t->Branch("cscNdof", &cscNdof, "cscNdof/I");
+   t->Branch("cscTime", &cscTime, "cscTime/F");
    t->Branch("rpcNdof", &rpcNdof, "rpcNdof/I");
    t->Branch("rpcTime", &rpcTime, "rpcTime/F");
    t->Branch("rpcTimeErr", &rpcTimeErr, "rpcTimeErr/F");
