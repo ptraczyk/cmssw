@@ -152,7 +152,7 @@ private:
 
 // muon kinematics and track fit parameters
   int charge;
-  float pt, phi, eta;
+  float pt, phi, eta, glbpt;
   float dPt;
   float dz;
   float dxy;

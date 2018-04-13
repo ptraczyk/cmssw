@@ -291,6 +291,8 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
 
     // fill muon kinematics
     pt = imuon->tunePMuonBestTrack()->pt();
+    glbpt=pt;
+    if (isGLB) glbpt=glbTrack->pt();
     dPt = imuon->tunePMuonBestTrack()->ptError();
     eta = imuon->tunePMuonBestTrack()->eta();
     phi = imuon->tunePMuonBestTrack()->phi();
@@ -305,6 +307,10 @@ MuonNtupleFiller::analyze(const edm::Event& iEvent, const edm::EventSetup& iSetu
     if (isSTA) {
       rpchits=countRPChits(staTrack,iEvent);
       count_segments=countDThits(staTrack,iEvent);
+      vector<int> count_csc={0,0,0,0};
+      count_csc=countCSChits(staTrack,iEvent);
+      for (int i=0;i<4;i++)
+        count_segments[i]+=count_csc[i];
       
       for (const auto &ch : imuon->matches()) {
         int nsegs=ch.segmentMatches.size();
@@ -469,6 +475,7 @@ MuonNtupleFiller::beginJob()
 
    t->Branch("charge", &charge, "charge/I");
    t->Branch("pt", &pt, "pt/F");
+   t->Branch("glbpt", &glbpt, "glbpt/F");
    t->Branch("phi", &phi, "phi/F");
    t->Branch("eta", &eta, "eta/F");
    t->Branch("dPt", &dPt, "dPt/F");
